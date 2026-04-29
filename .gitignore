@@ -1,0 +1,22 @@
+# Sugestão para adicionar ao .gitignore do projeto
+
+# Logs locais do Codex
+.codex-log/
+codex-tui.log
+
+# Ambiente
+.env
+.env.local
+
+# Dependências
+vendor/
+node_modules/
+
+# Artefatos
+coverage/
+storage/logs/*.log
+
+# Banco local / dumps
+*.sql
+*.dump
+*.sqlite

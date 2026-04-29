@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configurações da Empresa</title>
+  <link rel="stylesheet" href="../../core/css/tokens.css" />
+  <link rel="stylesheet" href="../../core/css/reset.css" />
+  <link rel="stylesheet" href="../../core/css/base.css" />
+  <link rel="stylesheet" href="../../core/css/layout.css" />
+  <link rel="stylesheet" href="../../core/css/components.css" />
+  <link rel="stylesheet" href="../../core/css/utilities.css" />
+</head>
+<body>
+  <main class="main-content" style="max-width:980px;margin:1rem auto;">
+    <section class="section">
+      <h1>Configurações da Clínica</h1>
+      <p class="subtitle">Dados institucionais, logos e arquivos.</p>
+
+      <form id="company-form" class="filters" style="margin-top:1rem;">
+        <div class="field"><label>Razão social</label><input class="input" name="legal_name" /></div>
+        <div class="field"><label>Nome fantasia</label><input class="input" name="trade_name" /></div>
+        <div class="field"><label>Documento</label><input class="input" name="document" data-mask="cpf" /></div>
+        <div class="field"><label>E-mail</label><input class="input" name="email" type="email" /></div>
+        <div class="field"><label>Telefone</label><input class="input" name="phone" data-mask="phone" /></div>
+        <div class="field"><label>CEP</label><input class="input" name="address_zipcode" data-mask="cep" /></div>
+        <div class="field"><label>Rua</label><input class="input" name="address_street" /></div>
+        <div class="field"><label>Número</label><input class="input" name="address_number" /></div>
+        <div class="field"><label>Cidade</label><input class="input" name="address_city" /></div>
+        <div class="field"><label>UF</label><input class="input" name="address_state" /></div>
+        <div class="field"><label>Timezone</label><input class="input" name="timezone" value="America/Sao_Paulo" /></div>
+      </form>
+      <div class="row-wrap" style="margin-top:.8rem;"><button id="save-company" class="btn btn-md">Salvar dados</button></div>
+      <div id="company-feedback" style="margin-top:.8rem;"></div>
+    </section>
+
+    <section class="section">
+      <h2>Upload de logos</h2>
+      <div class="filters">
+        <div class="field"><label>Logo principal</label><input type="file" id="logo-main" class="input" accept="image/*" /><img id="logo-main-preview" class="hidden" style="max-height:80px;" /></div>
+        <div class="field"><label>Logo secundária</label><input type="file" id="logo-secondary" class="input" accept="image/*" /><img id="logo-secondary-preview" class="hidden" style="max-height:80px;" /></div>
+      </div>
+      <div class="row-wrap" style="margin-top:.8rem;"><button id="upload-logos" class="btn btn-md">Enviar logos</button></div>
+      <div id="files-feedback" style="margin-top:.8rem;"></div>
+    </section>
+
+    <section class="section">
+      <h2>Arquivos da empresa</h2>
+      <div id="files-list" class="cards-grid"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./settings.js"></script>
+</body>
+</html>

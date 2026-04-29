@@ -1,0 +1,52 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Configuração de projeto para Codex.
+# Use este arquivo dentro do repositório em .codex/config.toml.
+# O Codex só aplica configuração de projeto depois que o repositório é confiável.
+
+# Segurança: permite escrever no workspace, mas pede aprovação para ações sensíveis.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+# Para specs grandes, aumenta o limite de instruções carregadas por AGENTS.md.
+project_doc_max_bytes = 65536
+
+# Permite que outros nomes de arquivo também sejam tratados como instruções do projeto.
+project_doc_fallback_filenames = [
+  "INSTRUCOES_IA.md",
+  "PROJECT_RULES.md",
+  ".agents.md"
+]
+
+# Mantém busca web em cache por padrão. Use live apenas quando precisar de informação realmente atual.
+web_search = "cached"
+
+# O projeto é grande e com regras críticas, então prefira raciocínio alto.
+model_reasoning_effort = "high"
+
+# Encaminhe apenas variáveis de ambiente seguras para comandos executados pelo agente.
+[shell_environment_policy]
+include_only = [
+  "PATH",
+  "HOME",
+  "USER",
+  "USERNAME",
+  "SHELL",
+  "COMPOSER_HOME",
+  "NVM_DIR",
+  "NODE_OPTIONS"
+]
+
+[features]
+shell_snapshot = true
+multi_agent = true
+codex_hooks = true
+
+# MCP recomendado para documentação de bibliotecas.
+# Mantido ativo porque é útil para PHP, Symfony, Eloquent, PEST, Docker, JS vanilla etc.
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+
+# MCPs opcionais ficam documentados em .codex/mcp/optional-mcps.toml.
+# Não ative todos de uma vez.

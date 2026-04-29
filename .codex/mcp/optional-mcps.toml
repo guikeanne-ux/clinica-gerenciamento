@@ -1,0 +1,27 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# MCPs opcionais.
+# Copie o bloco desejado para .codex/config.toml somente quando precisar.
+
+# 1) Playwright MCP
+# Use quando chegar na parte do frontend/design system e quiser que o agente interaja com a UI em navegador.
+#
+# [mcp_servers.playwright]
+# command = "npx"
+# args = ["-y", "@playwright/mcp"]
+
+# 2) GitHub MCP remoto
+# Use se o projeto estiver no GitHub e você quiser que o agente leia issues, PRs e contexto remoto.
+# Prefira read-only no começo.
+#
+# Exemplo conceitual:
+#
+# [mcp_servers.github]
+# url = "https://api.githubcopilot.com/mcp/"
+#
+# A autenticação normalmente depende do fluxo OAuth/token do host.
+# Configure apenas quando necessário.
+
+# 3) MCP interno/documentação privada
+# Só use se você tiver documentação privada, API interna, wiki ou specs em outro sistema.
+# Para este projeto, comece sem isso: mantenha tudo versionado dentro do repositório.

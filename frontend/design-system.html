@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design System - Clínica</title>
+  <link rel="stylesheet" href="./core/css/tokens.css" />
+  <link rel="stylesheet" href="./core/css/reset.css" />
+  <link rel="stylesheet" href="./core/css/base.css" />
+  <link rel="stylesheet" href="./core/css/layout.css" />
+  <link rel="stylesheet" href="./core/css/components.css" />
+  <link rel="stylesheet" href="./core/css/utilities.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <h2 class="sidebar__title">Núcleo UI</h2>
+      <nav class="menu">
+        <a href="#tipografia">Tipografia</a>
+        <a href="#botoes">Botões</a>
+        <a href="#formularios">Formulários</a>
+        <a href="#feedback">Feedback</a>
+        <a href="#navegacao">Navegação</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div>
+          <h1>Design System</h1>
+          <p class="subtitle">Base visual reutilizável do sistema</p>
+        </div>
+        <button class="btn btn-md" data-open-modal="#demo-modal">Abrir Modal</button>
+      </header>
+
+      <section class="section" id="tipografia">
+        <h2>Títulos e Texto</h2>
+        <h1>Heading h1</h1>
+        <h2>Heading h2</h2>
+        <h3>Heading h3</h3>
+        <p>Parágrafo padrão para textos explicativos.</p>
+        <div class="breadcrumbs"><a href="#">Início</a><span>/</span><a href="#">UI</a><span>/</span><strong>Design System</strong></div>
+      </section>
+
+      <section class="section" id="botoes">
+        <h2>Botões e Badges</h2>
+        <div class="row-wrap">
+          <button class="btn btn-sm">Small</button>
+          <button class="btn btn-md">Medium</button>
+          <button class="btn btn-lg">Large</button>
+          <button class="btn btn-xl">Extra Large</button>
+          <a href="#" class="btn btn-md">Link Botão</a>
+          <input type="button" class="btn btn-md" value="Input Botão" />
+          <span class="badge badge-success">Ativo</span>
+          <span class="badge badge-warning">Pendente</span>
+          <span class="badge badge-error">Atenção</span>
+        </div>
+      </section>
+
+      <section class="section" id="formularios">
+        <h2>Formulários e Filtros</h2>
+        <div class="filters card">
+          <div class="field"><label>Nome</label><input class="input" placeholder="Digite o nome" required /></div>
+          <div class="field"><label>CPF</label><input class="input" data-mask="cpf" placeholder="000.000.000-00" /></div>
+          <div class="field"><label>Telefone</label><input class="input" data-mask="phone" placeholder="(00) 00000-0000" /></div>
+          <div class="field"><label>CEP</label><input class="input" data-mask="cep" placeholder="00000-000" /></div>
+          <div class="field"><label>Valor</label><input class="input" data-mask="money" placeholder="R$ 0,00" /></div>
+          <div class="field"><label>Datepicker</label><input class="input" data-datepicker placeholder="dd/mm/aaaa" /></div>
+          <div class="field"><label>Datetime Picker</label><input class="input" data-datetimepicker placeholder="dd/mm/aaaa hh:mm" /></div>
+
+          <div class="field custom-select" data-select>
+            <label>Profissão</label>
+            <button type="button" class="select-trigger">Selecione</button>
+            <ul class="select-menu">
+              <li data-value="psicologo">Psicólogo</li>
+              <li data-value="fono">Fonoaudiólogo</li>
+              <li data-value="terapeuta">Terapeuta Ocupacional</li>
+            </ul>
+            <input type="hidden" name="profissao" />
+          </div>
+
+          <div class="field custom-multiselect" data-multiselect>
+            <label>Especialidades</label>
+            <div class="multi-control">
+              <div class="tags"></div>
+              <input type="text" class="multi-search" placeholder="Buscar e selecionar..." />
+            </div>
+            <ul class="multi-menu">
+              <li data-value="tea">TEA</li>
+              <li data-value="tdah">TDAH</li>
+              <li data-value="tod">TOD</li>
+              <li data-value="dislexia">Dislexia</li>
+            </ul>
+          </div>
+
+          <div class="field autocomplete" data-autocomplete>
+            <label>Cidade</label>
+            <input class="input auto-input" type="text" placeholder="Comece a digitar" />
+            <ul class="auto-menu"></ul>
+          </div>
+
+          <div class="field">
+            <label>Textarea</label>
+            <textarea class="input" rows="3" placeholder="Observações..."></textarea>
+          </div>
+
+          <div class="field" data-richtext-editor>
+            <label>Rich Text Editor</label>
+            <div class="rich-editor"></div>
+            <input type="hidden" class="rich-output" name="rich_text_content" />
+          </div>
+
+          <div class="field" data-file-preview>
+            <label>Upload com Preview</label>
+            <input class="input" type="file" accept="image/*" />
+            <img class="file-preview hidden" alt="Preview" />
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="feedback">
+        <h2>Feedback, estados e loading</h2>
+        <div class="alert alert-success">Sucesso: operação concluída.</div>
+        <div class="alert alert-error">Erro: verifique os campos obrigatórios.</div>
+        <div class="skeleton-grid">
+          <div class="skeleton h-16"></div><div class="skeleton h-16"></div><div class="skeleton h-16"></div>
+        </div>
+        <div class="empty-state card"><h3>Nenhum resultado</h3><p>Use os filtros para iniciar uma busca.</p></div>
+        <button class="btn btn-md" data-toast="Notificação enviada com sucesso!">Mostrar Toast</button>
+        <button class="btn btn-md" id="toggle-loading">Mostrar Loading</button>
+      </section>
+
+      <section class="section" id="navegacao">
+        <h2>Tabelas, tabs, dropdown, paginação e cards</h2>
+        <div class="tabs" data-tabs>
+          <button class="tab active" data-target="#tab-1">Lista</button>
+          <button class="tab" data-target="#tab-2">Cards</button>
+        </div>
+        <div id="tab-1" class="tab-panel active">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nome</th><th>Status</th><th>Ação</th></tr></thead>
+              <tbody>
+                <tr><td data-label="Nome">Maria</td><td data-label="Status">Ativo</td><td data-label="Ação"><div class="dropdown" data-dropdown><button class="btn btn-sm">Opções</button><ul class="dropdown-menu"><li>Editar</li><li>Visualizar</li></ul></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination"><button class="btn btn-sm">Anterior</button><span>1 de 5</span><button class="btn btn-sm">Próxima</button></div>
+        </div>
+        <div id="tab-2" class="tab-panel">
+          <div class="cards-grid">
+            <article class="card"><h3>Card 1</h3><p>Conteúdo de apoio.</p></article>
+            <article class="card"><h3>Card 2</h3><p>Conteúdo de apoio.</p></article>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="demo-modal" aria-hidden="true">
+    <div class="modal__panel">
+      <header class="modal__header"><h3>Modal com scroll interno</h3><button class="btn btn-sm" data-close-modal>&times;</button></header>
+      <div class="modal__body">
+        <p>Conteúdo extenso para validar scroll interno.</p>
+        <p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p><p>Lorem ipsum dolor sit amet.</p>
+      </div>
+      <footer class="modal__footer"><button class="btn btn-md" data-close-modal>Fechar</button></footer>
+    </div>
+  </div>
+
+  <div id="toast-root"></div>
+  <div id="loading-overlay" class="loading-overlay hidden"><div class="loader"></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+  <script type="module" src="./core/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Support\Uuid;
+use Illuminate\Database\Capsule\Manager as DB;
+
+return static function (): void {
+    $roles = [
+        'Administrador do sistema',
+        'Direção',
+        'Financeiro',
+        'Secretária/Recepção',
+        'Profissional clínico',
+        'Contas médicas',
+        'RH',
+        'Auditor/leitura',
+    ];
+
+    $permissions = [
+        'users.view',
+        'users.create',
+        'users.update',
+        'users.delete',
+        'acl.manage',
+        'audit.view',
+        'company.view',
+        'company.update',
+        'files.upload',
+        'files.view',
+        'files.download',
+        'files.delete',
+        'patients.view',
+        'patients.create',
+        'patients.update',
+        'patients.delete',
+        'professionals.view',
+        'professionals.create',
+        'professionals.update',
+        'professionals.delete',
+        'suppliers.view',
+        'suppliers.create',
+        'suppliers.update',
+        'suppliers.delete',
+        'professional_payment.view',
+        'professional_payment.create',
+        'professional_payment.update',
+        'professional_payment.delete',
+        'professional_payment.simulate',
+    ];
+
+    foreach ($roles as $role) {
+        DB::table('roles')->updateOrInsert(['name' => $role], [
+            'uuid' => DB::table('roles')->where('name', $role)->value('uuid') ?? Uuid::v4(),
+            'name' => $role,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    foreach ($permissions as $permission) {
+        DB::table('permissions')->updateOrInsert(['code' => $permission], [
+            'uuid' => DB::table('permissions')->where('code', $permission)->value('uuid') ?? Uuid::v4(),
+            'code' => $permission,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    $adminUserUuid = DB::table('users')->where('login', 'admin')->value('uuid') ?? Uuid::v4();
+    DB::table('users')->updateOrInsert(['login' => 'admin'], [
+        'uuid' => $adminUserUuid,
+        'name' => 'Administrador',
+        'login' => 'admin',
+        'email' => 'admin@clinica.local',
+        'password_hash' => password_hash('admin123', PASSWORD_ARGON2ID),
+        'status' => 'active',
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s'),
+    ]);
+
+    $adminRole = DB::table('roles')->where('name', 'Administrador do sistema')->first();
+    DB::table('user_roles')->updateOrInsert([
+        'user_uuid' => $adminUserUuid,
+        'role_uuid' => $adminRole->uuid,
+    ], [
+        'uuid' => DB::table('user_roles')->where('user_uuid', $adminUserUuid)->where('role_uuid', $adminRole->uuid)->value('uuid') ?? Uuid::v4(),
+        'user_uuid' => $adminUserUuid,
+        'role_uuid' => $adminRole->uuid,
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s'),
+    ]);
+
+    $allPermissions = DB::table('permissions')->get();
+    foreach ($allPermissions as $permission) {
+        DB::table('role_permissions')->updateOrInsert([
+            'role_uuid' => $adminRole->uuid,
+            'permission_uuid' => $permission->uuid,
+        ], [
+            'uuid' => DB::table('role_permissions')->where('role_uuid', $adminRole->uuid)->where('permission_uuid', $permission->uuid)->value('uuid') ?? Uuid::v4(),
+            'role_uuid' => $adminRole->uuid,
+            'permission_uuid' => $permission->uuid,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    $directionRole = DB::table('roles')->where('name', 'Direção')->first();
+    if ($directionRole !== null) {
+        $restricted = DB::table('permissions')
+            ->whereIn('code', [
+                'professional_payment.view',
+                'professional_payment.create',
+                'professional_payment.update',
+                'professional_payment.delete',
+                'professional_payment.simulate',
+            ])
+            ->get();
+
+        foreach ($restricted as $permission) {
+            DB::table('role_permissions')->updateOrInsert([
+                'role_uuid' => $directionRole->uuid,
+                'permission_uuid' => $permission->uuid,
+            ], [
+                'uuid' => DB::table('role_permissions')
+                    ->where('role_uuid', $directionRole->uuid)
+                    ->where('permission_uuid', $permission->uuid)
+                    ->value('uuid') ?? Uuid::v4(),
+                'role_uuid' => $directionRole->uuid,
+                'permission_uuid' => $permission->uuid,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+};

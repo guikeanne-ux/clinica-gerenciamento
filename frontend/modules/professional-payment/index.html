@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuração de Repasse Profissional</title>
+  <link rel="stylesheet" href="../../core/css/tokens.css" />
+  <link rel="stylesheet" href="../../core/css/reset.css" />
+  <link rel="stylesheet" href="../../core/css/base.css" />
+  <link rel="stylesheet" href="../../core/css/components.css" />
+  <link rel="stylesheet" href="../../core/css/layout.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <h2 class="sidebar__title">Financeiro Sigiloso</h2>
+      <nav class="menu"><a href="../app/layout.html">Voltar ao app</a></nav>
+    </aside>
+    <main class="main-content">
+      <header class="header">
+        <h1>Tabelas e Regras de Repasse</h1>
+      </header>
+
+      <section class="section">
+        <div class="alert alert-warning">
+          Informações contratuais e valores de repasse são sigilosos. Acesso restrito a perfis autorizados.
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Tabelas de pagamento</h2>
+        <div class="filters" style="grid-template-columns:2fr 1fr auto;">
+          <div class="field"><label>Busca</label><input class="input" id="search" placeholder="Nome da tabela" /></div>
+          <div class="field"><label>Status</label><select class="select" id="status"><option value="">Todos</option><option value="active">Ativo</option><option value="inactive">Inativo</option></select></div>
+          <button class="btn btn-md" id="btn-search" type="button">Buscar</button>
+        </div>
+        <div id="tables-list" class="cards-grid"></div>
+      </section>
+
+      <section class="section">
+        <h2>Criar/Editar tabela</h2>
+        <form id="table-form" class="filters" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+          <input type="hidden" name="uuid" />
+          <div class="field"><label>Nome</label><input class="input" name="name" required /></div>
+          <div class="field"><label>Status</label><select class="select" name="status"><option value="active">Ativo</option><option value="inactive">Inativo</option></select></div>
+          <div class="field"><label>Tipo cálculo</label><select class="select" name="calculation_type" required><option value="fixed_per_attendance">Fixo por atendimento</option><option value="fixed_monthly">Fixo mensal</option><option value="hybrid">Híbrido</option><option value="custom">Customizado</option></select></div>
+          <div class="field"><label>Início vigência</label><input class="input" type="date" name="effective_start_date" required /></div>
+          <div class="field"><label>Fim vigência</label><input class="input" type="date" name="effective_end_date" /></div>
+          <div class="field" style="grid-column:1/-1;"><label>Descrição</label><textarea class="textarea" name="description"></textarea></div>
+        </form>
+        <div class="row-wrap"><button class="btn btn-md" id="save-table" type="button">Salvar tabela</button></div>
+      </section>
+
+      <section class="section">
+        <h2>Simulação de repasse</h2>
+        <form id="simulate-form" class="filters" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+          <div class="field"><label>Profissional UUID</label><input class="input" name="professional_uuid" required /></div>
+          <div class="field"><label>Mês referência</label><input class="input" type="month" name="reference_month" required /></div>
+          <div class="field"><label>Atendimentos</label><input class="input" type="number" min="0" name="attendances_count" required /></div>
+          <div class="field"><label>Data referência (opcional)</label><input class="input" type="date" name="reference_date" /></div>
+        </form>
+        <div class="row-wrap"><button class="btn btn-md" id="simulate" type="button">Simular</button></div>
+      </section>
+
+      <section class="section"><div id="feedback"></div></section>
+    </main>
+  </div>
+
+  <script type="module" src="./professional-payment.js"></script>
+</body>
+</html>

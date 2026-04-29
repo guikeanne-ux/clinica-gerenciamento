@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link rel="stylesheet" href="../../core/css/tokens.css" />
+  <link rel="stylesheet" href="../../core/css/reset.css" />
+  <link rel="stylesheet" href="../../core/css/base.css" />
+  <link rel="stylesheet" href="../../core/css/components.css" />
+  <link rel="stylesheet" href="../../core/css/layout.css" />
+</head>
+<body>
+  <main class="main-content" style="max-width:440px;margin:8vh auto;">
+    <section class="section">
+      <h1>Entrar</h1>
+      <p class="subtitle">Acesse com seu login da clínica.</p>
+      <form id="login-form" class="filters" style="grid-template-columns:1fr;margin-top:1rem;">
+        <div class="field"><label>Login</label><input class="input" name="login" required /></div>
+        <div class="field"><label>Senha</label><input class="input" name="password" type="password" required /></div>
+        <button class="btn btn-md" type="submit">Entrar</button>
+      </form>
+      <div id="login-message" style="margin-top:.8rem;"></div>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById('login-form');
+    const msg = document.getElementById('login-message');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      const res = await fetch('/api/v1/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+      const json = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', json.data.token);
+        window.location.href = '../app/layout.html';
+        return;
+      }
+      msg.innerHTML = '<div class="alert alert-error">' + json.message + '</div>';
+    });
+  </script>
+</body>
+</html>

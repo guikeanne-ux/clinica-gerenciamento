@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App</title>
+  <link rel="stylesheet" href="../../core/css/tokens.css" />
+  <link rel="stylesheet" href="../../core/css/reset.css" />
+  <link rel="stylesheet" href="../../core/css/base.css" />
+  <link rel="stylesheet" href="../../core/css/components.css" />
+  <link rel="stylesheet" href="../../core/css/layout.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"><h2 class="sidebar__title">Painel</h2><nav id="perm-menu" class="menu"></nav></aside>
+    <main class="main-content">
+      <header class="header"><h1>Layout autenticado</h1><button id="logout" class="btn btn-sm">Sair</button></header>
+      <section class="section"><h2>Meus dados</h2><pre id="me"></pre></section>
+      <section class="section"><h2>Administração básica</h2><p>Usuários/perfis/permissões (escopo inicial).</p></section>
+    </main>
+  </div>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = '../auth/login.html';
+
+    const menu = document.getElementById('perm-menu');
+    const meEl = document.getElementById('me');
+
+    fetch('/api/v1/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+      .then(async (r) => ({ ok: r.ok, json: await r.json() }))
+      .then(({ ok, json }) => {
+        if (!ok) {
+          localStorage.removeItem('token');
+          window.location.href = '../auth/login.html';
+          return;
+        }
+
+        meEl.textContent = JSON.stringify(json.data, null, 2);
+        const items = [
+          { perm: 'users.view', label: 'Usuários' },
+          { perm: 'acl.manage', label: 'Perfis e permissões' },
+          { perm: 'audit.view', label: 'Auditoria' },
+          { perm: 'professional_payment.view', label: 'Repasse Profissional', href: '../professional-payment/index.html' }
+        ];
+        items.filter(i => json.data.permissions.includes(i.perm)).forEach(i => {
+          const a = document.createElement('a');
+          a.href = i.href || '#';
+          a.textContent = i.label;
+          menu.appendChild(a);
+        });
+      });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await fetch('/api/v1/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+      localStorage.removeItem('token');
+      window.location.href = '../auth/login.html';
+    });
+  </script>
+</body>
+</html>

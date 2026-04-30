@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Application;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\AuthenticationException;
+use App\Core\Exceptions\AuthorizationException;
+use App\Core\Exceptions\ErrorCode;
+use App\Core\Exceptions\ValidationException;
 use App\Core\Support\Uuid;
 use App\Modules\ACL\Application\PermissionService;
 use App\Modules\Audit\Infrastructure\Services\AuditService;
@@ -33,16 +36,16 @@ final class AuthService
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $this->auditService->log('auth.login_failed', $user?->uuid, ['login' => $login]);
-            throw new HttpException('Credenciais inválidas.', 401);
+            throw new AuthenticationException('Credenciais inválidas.', ErrorCode::AUTHENTICATION_FAILED);
         }
 
         if ($user->status !== 'active') {
             $this->auditService->log('auth.login_blocked_inactive', $user->uuid);
-            throw new HttpException('Usuário inativo.', 401);
+            throw new AuthenticationException('Usuário inativo.', ErrorCode::AUTHENTICATION_FAILED);
         }
 
         if ($user->roles()->count() === 0) {
-            throw new HttpException('Usuário sem perfil vinculado.', 403);
+            throw new AuthorizationException('Usuário sem perfil vinculado.');
         }
 
         $user->last_access_at = date('Y-m-d H:i:s');
@@ -67,7 +70,7 @@ final class AuthService
     public function changePassword(User $user, string $current, string $next): void
     {
         if (! password_verify($current, $user->password_hash)) {
-            throw new HttpException('Senha atual inválida.', 422);
+            throw new ValidationException('Senha atual inválida.');
         }
 
         $user->password_hash = password_hash($next, PASSWORD_ARGON2ID);

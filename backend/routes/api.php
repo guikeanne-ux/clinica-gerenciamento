@@ -17,6 +17,7 @@ use App\Modules\Person\Presentation\SupplierController;
 use App\Modules\ProfessionalPayment\Presentation\PaymentTableController;
 use App\Modules\ProfessionalPayment\Presentation\PaymentTableItemController;
 use App\Modules\ProfessionalPayment\Presentation\ProfessionalPaymentConfigController;
+use App\Modules\Specialty\Presentation\SpecialtyController;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
@@ -31,6 +32,7 @@ $supplierController = new SupplierController();
 $paymentTableController = new PaymentTableController();
 $paymentTableItemController = new PaymentTableItemController();
 $professionalPaymentConfigController = new ProfessionalPaymentConfigController();
+$specialtyController = new SpecialtyController();
 $authMiddleware = new AuthMiddleware();
 $permissionMiddleware = new PermissionMiddleware();
 
@@ -425,6 +427,38 @@ $routes->add('professional-payment.simulate', new Route('/api/v1/professionals/{
         'professional_payment.simulate'
     ),
 ], [], [], '', [], ['POST']));
+
+$routes->add('specialties.index', new Route('/api/v1/specialties', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $specialtyController->index($r),
+        'professionals.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('specialties.store', new Route('/api/v1/specialties', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $specialtyController->store($r),
+        'professionals.update'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('specialties.update', new Route('/api/v1/specialties/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $specialtyController->update($r),
+        'professionals.update'
+    ),
+], [], [], '', [], ['PUT']));
+
+$routes->add('specialties.delete', new Route('/api/v1/specialties/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $specialtyController->delete($r),
+        'professionals.update'
+    ),
+], [], [], '', [], ['DELETE']));
 
 $routes->add('admin.users.protected', new Route('/api/v1/admin/users', [
     '_controller' => static fn (Request $request): array => $guarded(

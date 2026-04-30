@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Files\Application;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\ErrorCode;
+use App\Core\Exceptions\NotFoundException;
+use App\Core\Exceptions\UploadException;
 use App\Core\Support\Uuid;
 use App\Modules\Audit\Infrastructure\Services\AuditService;
 use App\Modules\Files\Infrastructure\Models\FileRecord;
@@ -30,26 +32,26 @@ final class FileService
         $classification = (string) ($data['classification'] ?? 'documento_empresa');
 
         if ($originalName === '' || $base64 === '') {
-            throw new HttpException('Arquivo inválido.', 422);
+            throw new UploadException('Arquivo inválido.', ErrorCode::INVALID_UPLOAD);
         }
 
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         if (! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
-            throw new HttpException('Extensão não permitida.', 422);
+            throw new UploadException('Extensão não permitida.', ErrorCode::UNSUPPORTED_FILE_TYPE);
         }
 
         if (! in_array($mime, self::ALLOWED_MIMES, true)) {
-            throw new HttpException('MIME type não permitido.', 422);
+            throw new UploadException('MIME type não permitido.', ErrorCode::INVALID_MIME_TYPE);
         }
 
         $content = base64_decode($base64, true);
         if ($content === false) {
-            throw new HttpException('Conteúdo inválido.', 422);
+            throw new UploadException('Conteúdo inválido.', ErrorCode::INVALID_UPLOAD);
         }
 
         $size = strlen($content);
         if ($size > self::MAX_SIZE) {
-            throw new HttpException('Arquivo acima do limite.', 422);
+            throw new UploadException('Arquivo acima do limite.', ErrorCode::UPLOAD_TOO_LARGE);
         }
 
         $optimizedResult = $this->optimizeByMime($mime, $content);
@@ -89,7 +91,7 @@ final class FileService
             ->first();
 
         if (! $file instanceof FileRecord) {
-            throw new HttpException('Arquivo não encontrado.', 404);
+            throw new NotFoundException('Arquivo não encontrado.');
         }
 
         $this->auditService->log('files.viewed', $actor, ['file_uuid' => $file->uuid]);
@@ -112,7 +114,7 @@ final class FileService
             ->first();
 
         if (! $file instanceof FileRecord) {
-            throw new HttpException('Arquivo não encontrado.', 404);
+            throw new NotFoundException('Arquivo não encontrado.');
         }
 
         $file->status = 'deleted';

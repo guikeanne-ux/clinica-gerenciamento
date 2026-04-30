@@ -8,6 +8,7 @@ use App\Core\Http\JsonResponse;
 use App\Core\Http\Request;
 use App\Core\Support\ApiResponse;
 use App\Modules\Person\Application\PersonService;
+use Illuminate\Database\Capsule\Manager as DB;
 
 final class ProfessionalController
 {
@@ -35,7 +36,26 @@ final class ProfessionalController
     public function show(Request $request): array
     {
         $professional = $this->service->getProfessional((string) $request->attribute('uuid'));
-        return JsonResponse::make(ApiResponse::success(data: $professional->toArray()));
+        $data = $professional->toArray();
+
+        if (! empty($data['user_uuid'])) {
+            $linkedUser = DB::table('users')
+                ->where('uuid', (string) $data['user_uuid'])
+                ->select(['uuid', 'name', 'login', 'email', 'status'])
+                ->first();
+
+            if ($linkedUser !== null) {
+                $data['linked_user'] = [
+                    'uuid' => $linkedUser->uuid,
+                    'name' => $linkedUser->name,
+                    'login' => $linkedUser->login,
+                    'email' => $linkedUser->email,
+                    'status' => $linkedUser->status,
+                ];
+            }
+        }
+
+        return JsonResponse::make(ApiResponse::success(data: $data));
     }
 
     public function update(Request $request): array

@@ -12,6 +12,8 @@ return static function (): void {
         $table->text('description')->nullable();
         $table->string('status')->default('active');
         $table->string('calculation_type');
+        $table->decimal('default_percentage', 5, 2)->nullable();
+        $table->bigInteger('default_fixed_amount')->nullable();
         $table->date('effective_start_date');
         $table->date('effective_end_date')->nullable();
         $table->timestamps();
@@ -25,11 +27,11 @@ return static function (): void {
         $table->string('appointment_type')->nullable();
         $table->uuid('health_plan_uuid')->nullable();
         $table->string('procedure_code')->nullable();
-        $table->decimal('fixed_value', 12, 2)->nullable();
+        $table->bigInteger('fixed_value')->nullable();
         $table->decimal('percentage', 5, 2)->nullable();
         $table->unsignedInteger('duration_minutes')->nullable();
         $table->unsignedInteger('threshold_quantity')->nullable();
-        $table->decimal('extra_value', 12, 2)->nullable();
+        $table->bigInteger('extra_value')->nullable();
         $table->longText('rules_json')->nullable();
         $table->date('effective_start_date');
         $table->date('effective_end_date')->nullable();
@@ -42,11 +44,11 @@ return static function (): void {
         $table->uuid('professional_uuid');
         $table->string('payment_mode');
         $table->uuid('payment_table_uuid')->nullable();
-        $table->decimal('fixed_monthly_amount', 12, 2)->nullable();
-        $table->decimal('fixed_per_attendance_amount', 12, 2)->nullable();
-        $table->decimal('hybrid_base_amount', 12, 2)->nullable();
+        $table->bigInteger('fixed_monthly_amount')->nullable();
+        $table->bigInteger('fixed_per_attendance_amount')->nullable();
+        $table->bigInteger('hybrid_base_amount')->nullable();
         $table->unsignedInteger('hybrid_threshold_quantity')->nullable();
-        $table->decimal('hybrid_extra_amount_per_attendance', 12, 2)->nullable();
+        $table->bigInteger('hybrid_extra_amount_per_attendance')->nullable();
         $table->date('effective_start_date');
         $table->date('effective_end_date')->nullable();
         $table->string('status')->default('active');

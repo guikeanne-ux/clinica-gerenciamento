@@ -93,7 +93,7 @@ it('duplicate login is blocked', function (): void {
         'password' => 'abc12345',
     ], ['Authorization' => 'Bearer ' . $token]);
 
-    expect($response['status'])->toBe(422);
+    expect($response['status'])->toBe(409);
 });
 
 it('audit registers critical events', function (): void {

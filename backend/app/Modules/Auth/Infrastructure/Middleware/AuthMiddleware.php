@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Middleware;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\AuthenticationException;
+use App\Core\Exceptions\ErrorCode;
 use App\Core\Http\Request;
 use App\Modules\Auth\Application\JwtService;
 use App\Modules\Auth\Infrastructure\Models\User;
+use Firebase\JWT\ExpiredException;
 use Throwable;
 
 final class AuthMiddleware
@@ -20,7 +22,7 @@ final class AuthMiddleware
     {
         $header = $request->header('authorization');
         if (! $header || ! str_starts_with($header, 'Bearer ')) {
-            throw new HttpException('Não autenticado.', 401);
+            throw new AuthenticationException('Não autenticado.', ErrorCode::UNAUTHORIZED);
         }
 
         $token = substr($header, 7);
@@ -30,14 +32,16 @@ final class AuthMiddleware
             $user = User::query()->where('uuid', $decoded->sub)->first();
 
             if (! $user || $user->status !== 'active') {
-                throw new HttpException('Não autenticado.', 401);
+                throw new AuthenticationException('Não autenticado.', ErrorCode::UNAUTHORIZED);
             }
 
             $request->setAttribute('auth_user', $user);
 
             return $user;
+        } catch (ExpiredException) {
+            throw new AuthenticationException('Sua sessão expirou. Faça login novamente.', ErrorCode::TOKEN_EXPIRED);
         } catch (Throwable) {
-            throw new HttpException('Token inválido.', 401);
+            throw new AuthenticationException('Token inválido.', ErrorCode::UNAUTHORIZED);
         }
     }
 }

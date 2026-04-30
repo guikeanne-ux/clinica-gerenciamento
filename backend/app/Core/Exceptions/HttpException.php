@@ -11,7 +11,9 @@ class HttpException extends Exception
     public function __construct(
         string $message,
         private readonly int $statusCode = 500,
-        private readonly array $errors = []
+        private readonly array $errors = [],
+        private readonly string $errorCode = 'INTERNAL_SERVER_ERROR',
+        private readonly array $context = []
     ) {
         parent::__construct($message, $statusCode);
     }
@@ -24,5 +26,15 @@ class HttpException extends Exception
     public function getErrors(): array
     {
         return $this->errors;
+    }
+
+    public function getErrorCode(): string
+    {
+        return $this->errorCode;
+    }
+
+    public function getContext(): array
+    {
+        return $this->context;
     }
 }

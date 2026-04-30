@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make test *)",
+      "Bash(make lint *)",
+      "Bash(make phpstan *)",
+      "Bash(xargs cat *)",
+      "Bash(php backend/database/migrations/run.php)",
+      "Bash(docker compose *)",
+      "Bash(curl -s -X POST http://localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"login\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(grep -v \"^$\\\\|\\\\[1G\\\\|\\\\[2K\")",
+      "Bash(node --input-type=module)",
+      "Bash(node -e ' *)",
+      "Bash(node --input-type=module --eval ' *)"
+    ]
+  }
+}

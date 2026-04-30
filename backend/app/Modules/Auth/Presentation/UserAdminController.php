@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Presentation;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\ConflictException;
+use App\Core\Exceptions\ErrorCode;
+use App\Core\Exceptions\NotFoundException;
 use App\Core\Http\JsonResponse;
 use App\Core\Http\Request;
 use App\Core\Support\ApiResponse;
@@ -36,7 +38,7 @@ final class UserAdminController
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (QueryException $exception) {
-            throw new HttpException('Login ou e-mail já existente.', 422);
+            throw new ConflictException('Login ou e-mail já existente.', ErrorCode::DUPLICATE_LOGIN);
         }
 
         $this->auditService->log('users.created', $request->attribute('auth_user')->uuid, ['user_uuid' => $user->uuid]);
@@ -57,7 +59,10 @@ final class UserAdminController
 
     public function update(Request $request): array
     {
-        $user = User::query()->where('uuid', $request->attribute('user_uuid'))->firstOrFail();
+        $user = User::query()->where('uuid', $request->attribute('user_uuid'))->first();
+        if (! $user instanceof User) {
+            throw new NotFoundException('Usuário não encontrado.');
+        }
         $user->name = (string) $request->input('name', $user->name);
         $user->email = (string) $request->input('email', $user->email);
         $user->save();
@@ -69,7 +74,10 @@ final class UserAdminController
 
     public function inactivate(Request $request): array
     {
-        $user = User::query()->where('uuid', $request->attribute('user_uuid'))->firstOrFail();
+        $user = User::query()->where('uuid', $request->attribute('user_uuid'))->first();
+        if (! $user instanceof User) {
+            throw new NotFoundException('Usuário não encontrado.');
+        }
         $user->status = 'inactive';
         $user->save();
 

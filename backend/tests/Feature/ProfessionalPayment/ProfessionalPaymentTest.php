@@ -24,10 +24,14 @@ it('criar tabela válida', function (): void {
     $res = ApiRequester::call('POST', '/api/v1/payment-tables', [
         'name' => 'Tabela A',
         'calculation_type' => 'fixed_per_attendance',
+        'default_fixed_amount' => 150.25,
+        'default_percentage' => 35.5,
         'effective_start_date' => '2026-01-01',
     ], ['Authorization' => 'Bearer ' . PersonApi::tokenFor()]);
 
     expect($res['status'])->toBe(201);
+    $uuid = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR)['data']['uuid'];
+    expect((int) DB::table('payment_tables')->where('uuid', $uuid)->value('default_fixed_amount'))->toBe(15025);
 });
 
 it('bloquear tabela sem nome', function (): void {
@@ -133,6 +137,8 @@ it('criar item válido', function (): void {
     ], ['Authorization' => 'Bearer ' . $token]);
 
     expect($res['status'])->toBe(201);
+    $itemUuid = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR)['data']['uuid'];
+    expect((int) DB::table('payment_table_items')->where('uuid', $itemUuid)->value('fixed_value'))->toBe(5000);
 });
 
 it('bloquear item com valor negativo', function (): void {
@@ -245,6 +251,9 @@ it('atribuir configuração fixa mensal', function (): void {
     ], ['Authorization' => 'Bearer ' . PersonApi::tokenFor()]);
 
     expect($res['status'])->toBe(201);
+    $configUuid = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR)['data']['uuid'];
+    expect((int) DB::table('professional_payment_configs')->where('uuid', $configUuid)->value('fixed_monthly_amount'))
+        ->toBe(650000);
 });
 
 it('atribuir configuração híbrida', function (): void {
@@ -304,7 +313,7 @@ it('bloquear duas configurações ativas vigentes para o mesmo profissional na m
         'effective_start_date' => '2026-01-01',
     ], ['Authorization' => 'Bearer ' . $token]);
 
-    expect($res['status'])->toBe(422);
+    expect($res['status'])->toBe(409);
 });
 
 it('resolver regra vigente por data', function (): void {

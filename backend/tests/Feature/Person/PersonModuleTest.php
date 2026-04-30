@@ -73,7 +73,7 @@ it('bloqueia cpf duplicado de paciente', function (): void {
         'cpf' => '12345678901',
     ], ['Authorization' => 'Bearer ' . $token]);
 
-    expect($res['status'])->toBe(422);
+    expect($res['status'])->toBe(409);
 });
 
 it('edita paciente', function (): void {
@@ -346,7 +346,7 @@ it('bloqueia cpf duplicado de profissional', function (): void {
         'email' => 'profa2@clinica.local',
     ], ['Authorization' => 'Bearer ' . $token]);
 
-    expect($res['status'])->toBe(422);
+    expect($res['status'])->toBe(409);
 });
 
 it('bloqueia e-mail inválido de profissional', function (): void {
@@ -412,7 +412,7 @@ it('bloqueia criação de usuário duplicado para profissional', function (): vo
         'Authorization' => 'Bearer ' . $token,
     ]);
 
-    expect($res['status'])->toBe(422);
+    expect($res['status'])->toBe(409);
 });
 
 it('bloqueia acesso de profissionais sem permissão', function (): void {
@@ -475,7 +475,7 @@ it('bloqueia documento duplicado de fornecedor', function (): void {
         'document' => '12345678909',
     ], ['Authorization' => 'Bearer ' . $token]);
 
-    expect($res['status'])->toBe(422);
+    expect($res['status'])->toBe(409);
 });
 
 it('edita fornecedor', function (): void {

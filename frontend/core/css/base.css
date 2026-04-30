@@ -1,7 +1,29 @@
-body { font-family: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", sans-serif; background: radial-gradient(circle at 15% 0%, #f8f3eb, var(--bg)); color: var(--ink); }
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: "Plus Jakarta Sans", "Inter", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 a { color: inherit; text-decoration: none; }
-h1 { font-size: 2rem; margin-bottom: .25rem; }
-h2 { font-size: 1.4rem; margin-bottom: .75rem; }
-h3 { font-size: 1.1rem; margin-bottom: .5rem; }
-p { color: var(--muted); line-height: 1.5; }
-.subtitle { color: var(--muted); }
+a:hover { text-decoration: none; }
+
+h1 { font-size: 1.625rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.2em; line-height: 1.25; }
+h2 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 0.5em; line-height: 1.35; }
+h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.35em; line-height: 1.4; }
+h4 { font-size: 0.9rem; font-weight: 600; margin: 0 0 0.25em; }
+
+p { color: var(--muted); line-height: 1.6; margin: 0; }
+.subtitle { color: var(--muted); font-size: 0.875rem; }
+.text-sm { font-size: 0.8125rem; }
+.text-xs { font-size: 0.75rem; }
+.text-muted { color: var(--muted); }
+.text-ink { color: var(--ink); }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }

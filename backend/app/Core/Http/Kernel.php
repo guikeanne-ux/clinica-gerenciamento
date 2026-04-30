@@ -6,6 +6,7 @@ namespace App\Core\Http;
 
 use App\Core\Exceptions\ErrorHandler;
 use App\Core\Exceptions\HttpException;
+use App\Core\Support\Uuid;
 use LogicException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
@@ -15,6 +16,8 @@ final class Kernel
 {
     public function handle(string $method, string $uri, array $headers = [], array $body = []): array
     {
+        $requestId = Uuid::v4();
+
         try {
             $routes = require __DIR__ . '/../../../routes/api.php';
             $context = new RequestContext('/');
@@ -34,6 +37,7 @@ final class Kernel
 
             unset($route['_controller'], $route['_route']);
             $request = new Request($method, $path, $headers, $body, $query, $route);
+            $request->setAttribute('request_id', $requestId);
             $result = $action($request);
 
             if (! is_array($result) || ! isset($result['status'], $result['body'], $result['headers'])) {
@@ -43,11 +47,11 @@ final class Kernel
             return $result;
         } catch (ResourceNotFoundException) {
             return JsonResponse::make(
-                ErrorHandler::handle(new HttpException('Rota não encontrada.', 404))['body'],
+                ErrorHandler::handle(new HttpException('Rota não encontrada.', 404, [], 'NOT_FOUND'), $requestId)['body'],
                 404
             );
         } catch (\Throwable $throwable) {
-            $error = ErrorHandler::handle($throwable);
+            $error = ErrorHandler::handle($throwable, $requestId);
             return JsonResponse::make($error['body'], $error['status']);
         }
     }

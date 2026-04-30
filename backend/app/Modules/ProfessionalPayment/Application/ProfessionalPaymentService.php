@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\ProfessionalPayment\Application;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\BusinessRuleException;
+use App\Core\Exceptions\ConflictException;
+use App\Core\Exceptions\ErrorCode;
+use App\Core\Exceptions\NotFoundException;
+use App\Core\Exceptions\ValidationException;
 use App\Core\Support\Uuid;
 use App\Modules\Audit\Infrastructure\Services\AuditService;
 use App\Modules\Person\Infrastructure\Models\Professional;
@@ -35,6 +39,8 @@ final class ProfessionalPaymentService
             'description' => $data['description'] ?? null,
             'status' => $data['status'] ?? 'active',
             'calculation_type' => (string) $data['calculation_type'],
+            'default_percentage' => $data['default_percentage'] ?? null,
+            'default_fixed_amount' => $data['default_fixed_amount'] ?? null,
             'effective_start_date' => (string) $data['effective_start_date'],
             'effective_end_date' => $data['effective_end_date'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
@@ -50,7 +56,7 @@ final class ProfessionalPaymentService
         /** @var PaymentTable|null $table */
         $table = PaymentTable::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($table === null) {
-            throw new HttpException('Tabela de pagamento não encontrada.', 404);
+            throw new NotFoundException('Tabela de pagamento não encontrada.');
         }
 
         return $table;
@@ -120,7 +126,7 @@ final class ProfessionalPaymentService
         /** @var PaymentTableItem|null $item */
         $item = PaymentTableItem::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($item === null) {
-            throw new HttpException('Item da tabela não encontrado.', 404);
+            throw new NotFoundException('Item da tabela não encontrado.');
         }
 
         return $item;
@@ -202,7 +208,7 @@ final class ProfessionalPaymentService
         /** @var ProfessionalPaymentConfig|null $config */
         $config = ProfessionalPaymentConfig::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($config === null) {
-            throw new HttpException('Configuração de pagamento não encontrada.', 404);
+            throw new NotFoundException('Configuração de pagamento não encontrada.');
         }
 
         return $config;
@@ -246,7 +252,7 @@ final class ProfessionalPaymentService
 
         $config = $this->findActiveConfigForDate($professionalUuid, $date);
         if ($config === null) {
-            throw new HttpException('Nenhuma configuração vigente encontrada para a data informada.', 404);
+            throw new NotFoundException('Nenhuma configuração vigente encontrada para a data informada.');
         }
 
         $valuesUsed = [
@@ -301,7 +307,7 @@ final class ProfessionalPaymentService
         $attendances = (int) ($data['attendances_count'] ?? 0);
 
         if ($attendances < 0) {
-            throw new HttpException('Quantidade de atendimentos inválida.', 422);
+            throw new ValidationException('Quantidade de atendimentos inválida.', [['field' => 'attendances_count', 'message' => 'Quantidade de atendimentos inválida.']]);
         }
 
         $resolved = $this->resolveProfessionalPaymentRule($professionalUuid, $referenceDate);
@@ -359,27 +365,38 @@ final class ProfessionalPaymentService
     private function validatePaymentTable(array $data): void
     {
         if (trim((string) ($data['name'] ?? '')) === '') {
-            throw new HttpException('Nome da tabela é obrigatório.', 422);
+            throw new ValidationException('Nome da tabela é obrigatório.', [['field' => 'name', 'message' => 'Nome da tabela é obrigatório.']]);
         }
 
         if (! in_array(($data['status'] ?? 'active'), ['active', 'inactive'], true)) {
-            throw new HttpException('Status inválido.', 422);
+            throw new ValidationException('Status inválido.', [['field' => 'status', 'message' => 'Status inválido.']]);
         }
 
         $types = ['fixed_per_attendance', 'fixed_monthly', 'hybrid', 'custom'];
         if (! in_array((string) ($data['calculation_type'] ?? ''), $types, true)) {
-            throw new HttpException('Tipo de cálculo inválido.', 422);
+            throw new ValidationException('Tipo de cálculo inválido.', [['field' => 'calculation_type', 'message' => 'Tipo de cálculo inválido.']]);
         }
 
         if (trim((string) ($data['effective_start_date'] ?? '')) === '') {
-            throw new HttpException('Data de início da vigência é obrigatória.', 422);
+            throw new ValidationException('Data de início da vigência é obrigatória.', [['field' => 'effective_start_date', 'message' => 'Data de início da vigência é obrigatória.']]);
+        }
+
+        $this->assertNonNegative($data['default_fixed_amount'] ?? null, 'default_fixed_amount');
+        if (isset($data['default_percentage'])) {
+            $percentage = (float) $data['default_percentage'];
+            if ($percentage < 0 || $percentage > 100) {
+                throw new ValidationException(
+                    'default_percentage deve estar entre 0 e 100.',
+                    [['field' => 'default_percentage', 'message' => 'default_percentage deve estar entre 0 e 100.']]
+                );
+            }
         }
     }
 
     private function validatePaymentTableItem(array $data): void
     {
         if (trim((string) ($data['effective_start_date'] ?? '')) === '') {
-            throw new HttpException('Data de início da vigência do item é obrigatória.', 422);
+            throw new ValidationException('Data de início da vigência do item é obrigatória.', [['field' => 'effective_start_date', 'message' => 'Data de início da vigência do item é obrigatória.']]);
         }
 
         $this->assertNonNegative($data['fixed_value'] ?? null, 'fixed_value');
@@ -388,16 +405,16 @@ final class ProfessionalPaymentService
         if (isset($data['percentage'])) {
             $percentage = (float) $data['percentage'];
             if ($percentage < 0 || $percentage > 100) {
-                throw new HttpException('percentage deve estar entre 0 e 100.', 422);
+                throw new ValidationException('percentage deve estar entre 0 e 100.', [['field' => 'percentage', 'message' => 'percentage deve estar entre 0 e 100.']]);
             }
         }
 
         if (isset($data['duration_minutes']) && (int) $data['duration_minutes'] <= 0) {
-            throw new HttpException('duration_minutes deve ser maior que zero.', 422);
+            throw new ValidationException('duration_minutes deve ser maior que zero.', [['field' => 'duration_minutes', 'message' => 'duration_minutes deve ser maior que zero.']]);
         }
 
         if (isset($data['threshold_quantity']) && (int) $data['threshold_quantity'] < 0) {
-            throw new HttpException('threshold_quantity deve ser maior ou igual a zero.', 422);
+            throw new ValidationException('threshold_quantity deve ser maior ou igual a zero.', [['field' => 'threshold_quantity', 'message' => 'threshold_quantity deve ser maior ou igual a zero.']]);
         }
     }
 
@@ -410,15 +427,15 @@ final class ProfessionalPaymentService
         $mode = (string) ($data['payment_mode'] ?? '');
 
         if (! in_array($mode, $modes, true)) {
-            throw new HttpException('Modo de pagamento inválido.', 422);
+            throw new ValidationException('Modo de pagamento inválido.', [['field' => 'payment_mode', 'message' => 'Modo de pagamento inválido.']]);
         }
 
         if (! in_array(($data['status'] ?? 'active'), ['active', 'inactive'], true)) {
-            throw new HttpException('Status inválido.', 422);
+            throw new ValidationException('Status inválido.', [['field' => 'status', 'message' => 'Status inválido.']]);
         }
 
         if (trim((string) ($data['effective_start_date'] ?? '')) === '') {
-            throw new HttpException('Data de início da vigência é obrigatória.', 422);
+            throw new ValidationException('Data de início da vigência é obrigatória.', [['field' => 'effective_start_date', 'message' => 'Data de início da vigência é obrigatória.']]);
         }
 
         $this->assertNonNegative($data['fixed_monthly_amount'] ?? null, 'fixed_monthly_amount');
@@ -430,7 +447,7 @@ final class ProfessionalPaymentService
         );
 
         if (isset($data['hybrid_threshold_quantity']) && (int) $data['hybrid_threshold_quantity'] < 0) {
-            throw new HttpException('hybrid_threshold_quantity deve ser maior ou igual a zero.', 422);
+            throw new ValidationException('hybrid_threshold_quantity deve ser maior ou igual a zero.', [['field' => 'hybrid_threshold_quantity', 'message' => 'hybrid_threshold_quantity deve ser maior ou igual a zero.']]);
         }
 
         if (($data['payment_table_uuid'] ?? null) !== null) {
@@ -438,7 +455,7 @@ final class ProfessionalPaymentService
         }
 
         if ($mode === 'fixed_monthly' && ! isset($data['fixed_monthly_amount'])) {
-            throw new HttpException('fixed_monthly_amount é obrigatório para modo fixed_monthly.', 422);
+            throw new ValidationException('fixed_monthly_amount é obrigatório para modo fixed_monthly.', [['field' => 'fixed_monthly_amount', 'message' => 'fixed_monthly_amount é obrigatório para modo fixed_monthly.']]);
         }
 
         if ($mode === 'hybrid') {
@@ -449,7 +466,7 @@ final class ProfessionalPaymentService
             ];
             foreach ($required as $field) {
                 if (! isset($data[$field])) {
-                    throw new HttpException($field . ' é obrigatório para modo hybrid.', 422);
+                    throw new ValidationException($field . ' é obrigatório para modo hybrid.', [['field' => $field, 'message' => $field . ' é obrigatório para modo hybrid.']]);
                 }
             }
         }
@@ -497,9 +514,9 @@ final class ProfessionalPaymentService
         }
 
         if ($query->first() !== null) {
-            throw new HttpException(
+            throw new ConflictException(
                 'Já existe configuração ativa vigente para o profissional na data/período informado.',
-                422
+                ErrorCode::CONFLICT
             );
         }
     }
@@ -527,6 +544,8 @@ final class ProfessionalPaymentService
             return 0.0;
         }
 
+        $table = $this->getPaymentTable($config->payment_table_uuid);
+
         /** @var PaymentTableItem|null $item */
         $item = PaymentTableItem::query()
             ->where('payment_table_uuid', $config->payment_table_uuid)
@@ -538,11 +557,11 @@ final class ProfessionalPaymentService
             ->orderByDesc('effective_start_date')
             ->first();
 
-        if ($item === null) {
-            return 0.0;
+        if ($item !== null && $item->fixed_value !== null) {
+            return (float) $item->fixed_value;
         }
 
-        return (float) ($item->fixed_value ?? 0);
+        return (float) ($table->default_fixed_amount ?? 0);
     }
 
     private function assertProfessionalExists(string $professionalUuid): void
@@ -550,7 +569,7 @@ final class ProfessionalPaymentService
         /** @var Professional|null $professional */
         $professional = Professional::query()->where('uuid', $professionalUuid)->whereNull('deleted_at')->first();
         if ($professional === null) {
-            throw new HttpException('Profissional não encontrado.', 404);
+            throw new NotFoundException('Profissional não encontrado.');
         }
     }
 
@@ -561,7 +580,7 @@ final class ProfessionalPaymentService
         }
 
         if ((float) $value < 0) {
-            throw new HttpException($field . ' não pode ser negativo.', 422);
+            throw new ValidationException($field . ' não pode ser negativo.', [['field' => $field, 'message' => $field . ' não pode ser negativo.']]);
         }
     }
 

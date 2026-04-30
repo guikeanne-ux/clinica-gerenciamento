@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Company\Application;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\ValidationException;
 use App\Core\Support\Uuid;
 use App\Modules\Audit\Infrastructure\Services\AuditService;
 use App\Modules\Company\Infrastructure\Models\Company;
@@ -38,24 +38,22 @@ final class CompanyService
         $phone = (string) ($data['phone'] ?? '');
 
         if ($document !== '' && ! $this->isValidCpfCnpj($document)) {
-            throw new HttpException(
+            throw new ValidationException(
                 'Documento inválido.',
-                422,
                 [['field' => 'document', 'message' => 'CPF/CNPJ inválido.']]
             );
         }
 
         if ($email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new HttpException('E-mail inválido.', 422, [['field' => 'email', 'message' => 'E-mail inválido.']]);
+            throw new ValidationException('E-mail inválido.', [['field' => 'email', 'message' => 'E-mail inválido.']]);
         }
 
         if (
             $phone !== '' &&
             ! preg_match('/^\(?\d{2}\)?\s?\d{4,5}\-?\d{4}$/', preg_replace('/\s+/', '', $phone))
         ) {
-            throw new HttpException(
+            throw new ValidationException(
                 'Telefone inválido.',
-                422,
                 [['field' => 'phone', 'message' => 'Telefone inválido.']]
             );
         }

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Person\Application;
 
-use App\Core\Exceptions\HttpException;
+use App\Core\Exceptions\ConflictException;
+use App\Core\Exceptions\ErrorCode;
+use App\Core\Exceptions\NotFoundException;
+use App\Core\Exceptions\ValidationException;
 use App\Core\Support\Uuid;
 use App\Modules\Audit\Infrastructure\Services\AuditService;
 use App\Modules\Person\Infrastructure\Models\Patient;
@@ -46,7 +49,7 @@ final class PersonService
         /** @var Patient|null $patient */
         $patient = Patient::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($patient === null) {
-            throw new HttpException('Paciente não encontrado.', 404);
+            throw new NotFoundException('Paciente não encontrado.');
         }
 
         return $patient;
@@ -94,7 +97,7 @@ final class PersonService
     {
         $this->getPatient($patientUuid);
         if (($data['name'] ?? '') === '') {
-            throw new HttpException('Nome do responsável é obrigatório.', 422);
+            throw new ValidationException('Nome do responsável é obrigatório.');
         }
         $this->assertValidCpf($data['cpf'] ?? null);
         $this->assertValidEmail($data['email'] ?? null);
@@ -121,7 +124,7 @@ final class PersonService
         /** @var PatientResponsible|null $resp */
         $resp = PatientResponsible::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($resp === null) {
-            throw new HttpException('Responsável não encontrado.', 404);
+            throw new NotFoundException('Responsável não encontrado.');
         }
 
         $this->assertValidCpf($data['cpf'] ?? $resp->cpf ?? null);
@@ -140,7 +143,7 @@ final class PersonService
         /** @var PatientResponsible|null $resp */
         $resp = PatientResponsible::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($resp === null) {
-            throw new HttpException('Responsável não encontrado.', 404);
+            throw new NotFoundException('Responsável não encontrado.');
         }
 
         $resp->deleted_at = date('Y-m-d H:i:s');
@@ -157,7 +160,7 @@ final class PersonService
     public function createProfessional(array $data, string $actor): Professional
     {
         if (($data['full_name'] ?? '') === '') {
-            throw new HttpException('Nome do profissional é obrigatório.', 422);
+            throw new ValidationException('Nome do profissional é obrigatório.');
         }
         $this->assertUnique('professionals', 'cpf', $data['cpf'] ?? null);
         $this->assertUnique('professionals', 'email', $data['email'] ?? null);
@@ -191,7 +194,7 @@ final class PersonService
         /** @var Professional|null $professional */
         $professional = Professional::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($professional === null) {
-            throw new HttpException('Profissional não encontrado.', 404);
+            throw new NotFoundException('Profissional não encontrado.');
         }
 
         return $professional;
@@ -234,11 +237,11 @@ final class PersonService
     {
         $professional = $this->getProfessional($uuid);
         if (($professional->email ?? '') === '') {
-            throw new HttpException('Profissional precisa ter e-mail para criar usuário.', 422);
+            throw new ValidationException('Profissional precisa ter e-mail para criar usuário.');
         }
 
         if ($professional->user_uuid !== null) {
-            throw new HttpException('Profissional já vinculado a usuário.', 422);
+            throw new ConflictException('Profissional já vinculado a usuário.', ErrorCode::CONFLICT);
         }
 
         $existing = DB::table('users')
@@ -246,7 +249,7 @@ final class PersonService
             ->orWhere('email', $professional->email)
             ->first();
         if ($existing !== null) {
-            throw new HttpException('Já existe usuário com este e-mail/login.', 422);
+            throw new ConflictException('Já existe usuário com este e-mail/login.', ErrorCode::DUPLICATE_EMAIL);
         }
 
         $userUuid = Uuid::v4();
@@ -295,7 +298,7 @@ final class PersonService
     public function createSupplier(array $data, string $actor): Supplier
     {
         if (($data['name_or_legal_name'] ?? '') === '') {
-            throw new HttpException('Nome/razão social é obrigatório.', 422);
+            throw new ValidationException('Nome/razão social é obrigatório.');
         }
 
         $this->assertUnique('suppliers', 'document', $data['document'] ?? null);
@@ -319,7 +322,7 @@ final class PersonService
         /** @var Supplier|null $supplier */
         $supplier = Supplier::query()->where('uuid', $uuid)->whereNull('deleted_at')->first();
         if ($supplier === null) {
-            throw new HttpException('Fornecedor não encontrado.', 404);
+            throw new NotFoundException('Fornecedor não encontrado.');
         }
 
         return $supplier;
@@ -394,10 +397,10 @@ final class PersonService
     private function validatePatient(array $data): void
     {
         if (($data['full_name'] ?? '') === '') {
-            throw new HttpException('Nome completo é obrigatório.', 422);
+            throw new ValidationException('Nome completo é obrigatório.');
         }
         if (($data['birth_date'] ?? '') === '') {
-            throw new HttpException('Data de nascimento é obrigatória.', 422);
+            throw new ValidationException('Data de nascimento é obrigatória.');
         }
         $this->assertValidCpf($data['cpf'] ?? null);
         $this->assertValidEmail($data['email'] ?? null);
@@ -406,7 +409,7 @@ final class PersonService
         $this->assertValidCep($data['address_zipcode'] ?? null);
 
         if (isset($data['status']) && ! in_array($data['status'], ['active', 'inactive'], true)) {
-            throw new HttpException('Status inválido.', 422);
+            throw new ValidationException('Status inválido.');
         }
     }
 
@@ -422,7 +425,14 @@ final class PersonService
         }
 
         if ($qb->first() !== null) {
-            throw new HttpException('Valor duplicado para ' . $field . '.', 422);
+            $code = match ($field) {
+                'cpf' => ErrorCode::DUPLICATE_DOCUMENT,
+                'document' => ErrorCode::DUPLICATE_DOCUMENT,
+                'email' => ErrorCode::DUPLICATE_EMAIL,
+                default => ErrorCode::CONFLICT,
+            };
+
+            throw new ConflictException('Valor duplicado para ' . $field . '.', $code);
         }
     }
 
@@ -432,7 +442,7 @@ final class PersonService
             return;
         }
         if (! filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            throw new HttpException('E-mail inválido.', 422);
+            throw new ValidationException('E-mail inválido.', [['field' => 'email', 'message' => 'E-mail inválido.']]);
         }
     }
 
@@ -444,7 +454,7 @@ final class PersonService
 
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (! in_array(strlen($digits), [10, 11], true)) {
-            throw new HttpException('Telefone inválido.', 422);
+            throw new ValidationException('Telefone inválido.', [['field' => 'phone', 'message' => 'Telefone inválido.']]);
         }
     }
 
@@ -455,7 +465,7 @@ final class PersonService
         }
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (strlen($digits) !== 8) {
-            throw new HttpException('CEP inválido.', 422);
+            throw new ValidationException('CEP inválido.', [['field' => 'address_zipcode', 'message' => 'CEP inválido.']]);
         }
     }
 
@@ -467,7 +477,7 @@ final class PersonService
 
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (strlen($digits) !== 11) {
-            throw new HttpException('CPF inválido.', 422);
+            throw new ValidationException('CPF inválido.', [['field' => 'cpf', 'message' => 'CPF inválido.']]);
         }
     }
 
@@ -479,7 +489,7 @@ final class PersonService
 
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (! in_array(strlen($digits), [11, 14], true)) {
-            throw new HttpException('CPF/CNPJ inválido.', 422);
+            throw new ValidationException('CPF/CNPJ inválido.', [['field' => 'document', 'message' => 'CPF/CNPJ inválido.']]);
         }
     }
 }

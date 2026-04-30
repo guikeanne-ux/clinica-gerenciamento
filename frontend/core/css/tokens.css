@@ -1,16 +1,119 @@
 :root {
-  --bg: #f3f0ea;
-  --surface: #fffdf9;
-  --surface-2: #f7f2e9;
-  --ink: #1f2937;
-  --muted: #6b7280;
-  --primary: #1f5f5b;
-  --primary-700: #154845;
-  --accent: #c08a3e;
-  --success: #1f7a4f;
-  --warning: #9a6a1a;
-  --error: #a43a3a;
-  --border: #e6ddcf;
-  --shadow: 0 18px 44px rgba(39, 34, 24, 0.12);
-  --r: 14px;
+  /* ─── Brand: Teal clínico ─────────────────────────────────── */
+  --color-primary-50:  #edfaf8;
+  --color-primary-100: #c6f0eb;
+  --color-primary-200: #8de1d7;
+  --color-primary-300: #4eccc0;
+  --color-primary-400: #28b0a4;
+  --color-primary-500: #1a9188;
+  --color-primary-600: #157470;
+  --color-primary-700: #115b58;
+  --color-primary-800: #0d4340;
+  --color-primary-900: #082d2b;
+
+  /* ─── Accent: Âmbar quente ───────────────────────────────── */
+  --color-accent-100: #fef3dc;
+  --color-accent-200: #fce0a2;
+  --color-accent-300: #f7c564;
+  --color-accent-400: #eca831;
+  --color-accent-500: #d08a18;
+  --color-accent-600: #a86d0f;
+
+  /* ─── Neutrals: Areia quente ─────────────────────────────── */
+  --color-neutral-50:  #faf9f7;
+  --color-neutral-100: #f3f0eb;
+  --color-neutral-200: #e8e2d8;
+  --color-neutral-300: #d3ccbf;
+  --color-neutral-400: #b0a99a;
+  --color-neutral-500: #8c8478;
+  --color-neutral-600: #6a6259;
+  --color-neutral-700: #4d4740;
+  --color-neutral-800: #312c28;
+  --color-neutral-900: #1c1814;
+
+  /* ─── Semânticas ─────────────────────────────────────────── */
+  --color-success-bg:   #d1fae5;
+  --color-success:      #059669;
+  --color-success-dark: #065f46;
+  --color-warning-bg:   #fef3c7;
+  --color-warning:      #d97706;
+  --color-warning-dark: #92400e;
+  --color-error-bg:     #fee2e2;
+  --color-error:        #dc2626;
+  --color-error-dark:   #991b1b;
+  --color-info-bg:      #dbeafe;
+  --color-info:         #2563eb;
+
+  /* ─── Superfícies ────────────────────────────────────────── */
+  --bg:        var(--color-neutral-100);
+  --surface:   #ffffff;
+  --surface-2: var(--color-neutral-50);
+  --surface-3: var(--color-primary-50);
+
+  /* ─── Texto ───────────────────────────────────────────────── */
+  --ink:         var(--color-neutral-900);
+  --ink-2:       var(--color-neutral-700);
+  --muted:       var(--color-neutral-500);
+  --placeholder: var(--color-neutral-400);
+
+  /* ─── Atalhos de marca ───────────────────────────────────── */
+  --primary:       var(--color-primary-600);
+  --primary-hover: var(--color-primary-700);
+  --primary-light: var(--color-primary-50);
+  --accent:        var(--color-accent-500);
+  --success:       var(--color-success);
+  --warning:       var(--color-warning);
+  --error:         var(--color-error);
+
+  /* ─── Bordas ─────────────────────────────────────────────── */
+  --border:       var(--color-neutral-200);
+  --border-focus: var(--color-primary-400);
+
+  /* ─── Sombras ────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(28, 24, 20, 0.06);
+  --shadow-sm: 0 1px 4px rgba(28, 24, 20, 0.08);
+  --shadow:    0 4px 14px rgba(28, 24, 20, 0.09);
+  --shadow-md: 0 8px 24px rgba(28, 24, 20, 0.10);
+  --shadow-lg: 0 16px 40px rgba(28, 24, 20, 0.12);
+
+  /* ─── Radius ─────────────────────────────────────────────── */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r:    12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+
+  /* ─── Espaçamento ────────────────────────────────────────── */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+
+  /* ─── Sidebar ────────────────────────────────────────────── */
+  --sidebar-width:      240px;
+  --sidebar-bg:         #0d3330;
+  --sidebar-border:     rgba(255,255,255,0.07);
+  --sidebar-text:       rgba(255,255,255,0.88);
+  --sidebar-text-muted: rgba(255,255,255,0.42);
+  --sidebar-active-bg:  rgba(255,255,255,0.13);
+  --sidebar-hover-bg:   rgba(255,255,255,0.07);
+  --sidebar-accent:     #4eccc0;
+
+  /* ─── Header ─────────────────────────────────────────────── */
+  --header-height: 60px;
+  --header-bg:     #ffffff;
+  --header-border: var(--color-neutral-200);
+
+  /* ─── Transições ─────────────────────────────────────────── */
+  --transition-fast: 120ms ease;
+  --transition:      200ms ease;
+  --transition-slow: 360ms ease;
+
+  /* ─── Legado (não remover - usado em componentes antigos) ─── */
+  --primary-700: var(--color-primary-700);
 }

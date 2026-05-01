@@ -151,6 +151,22 @@ it('upload inválido por mime é bloqueado', function (): void {
     expect($res['status'])->toBe(422);
 });
 
+it('upload de audio webm com codecs no mime é aceito', function (): void {
+    $res = CompanyFilesApi::call(
+        'POST',
+        '/api/v1/files/upload',
+        [
+            'original_name' => 'gravacao.webm',
+            'mime_type' => 'audio/webm;codecs=opus',
+            'content_base64' => base64_encode('webm-bytes'),
+            'classification' => 'documento_clinico',
+        ],
+        ['Authorization' => 'Bearer ' . CompanyFilesApi::loginToken()]
+    );
+
+    expect($res['status'])->toBe(201);
+});
+
 it('upload acima do limite é bloqueado', function (): void {
     $res = CompanyFilesApi::call(
         'POST',
@@ -158,7 +174,7 @@ it('upload acima do limite é bloqueado', function (): void {
         [
             'original_name' => 'big.pdf',
             'mime_type' => 'application/pdf',
-            'content_base64' => base64_encode(str_repeat('a', 5_242_881)),
+            'content_base64' => base64_encode(str_repeat('a', 20_971_521)),
         ],
         ['Authorization' => 'Bearer ' . CompanyFilesApi::loginToken()]
     );

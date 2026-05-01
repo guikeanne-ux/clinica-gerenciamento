@@ -61,6 +61,7 @@ final class AuthService
                 'name' => $user->name,
                 'login' => $user->login,
                 'email' => $user->email,
+                'professional_uuid' => $user->professional_uuid,
                 'status' => $user->status,
                 'permissions' => $this->permissionService->permissionsFor($user),
             ],

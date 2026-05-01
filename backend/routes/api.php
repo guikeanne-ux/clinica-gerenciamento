@@ -8,8 +8,12 @@ use App\Modules\ACL\Infrastructure\Middleware\PermissionMiddleware;
 use App\Modules\Auth\Infrastructure\Middleware\AuthMiddleware;
 use App\Modules\Auth\Presentation\AuthController;
 use App\Modules\Auth\Presentation\UserAdminController;
+use App\Modules\Attendance\Presentation\AttendanceController;
 use App\Modules\Company\Presentation\CompanyController;
+use App\Modules\ClinicalRecord\Presentation\AudioRecordController;
+use App\Modules\ClinicalRecord\Presentation\ClinicalRecordController;
 use App\Modules\Files\Presentation\FilesController;
+use App\Modules\PatientTimeline\Presentation\PatientTimelineController;
 use App\Modules\Person\Presentation\PatientController;
 use App\Modules\Person\Presentation\ProfessionalController;
 use App\Modules\Person\Presentation\ResponsibleController;
@@ -37,6 +41,10 @@ $professionalPaymentConfigController = new ProfessionalPaymentConfigController()
 $specialtyController = new SpecialtyController();
 $scheduleEventTypeController = new ScheduleEventTypeController();
 $scheduleEventController = new ScheduleEventController();
+$attendanceController = new AttendanceController();
+$clinicalRecordController = new ClinicalRecordController();
+$audioRecordController = new AudioRecordController();
+$patientTimelineController = new PatientTimelineController();
 $authMiddleware = new AuthMiddleware();
 $permissionMiddleware = new PermissionMiddleware();
 
@@ -583,6 +591,174 @@ $routes->add('schedule.events.reschedule', new Route('/api/v1/schedule/events/{u
         'schedule.update'
     ),
 ], [], [], '', [], ['POST']));
+
+$routes->add('attendances.index', new Route('/api/v1/attendances', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->index($r),
+        'attendance.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('attendances.show', new Route('/api/v1/attendances/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->show($r),
+        'attendance.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('attendances.store', new Route('/api/v1/attendances', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->store($r),
+        'attendance.create'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('attendances.start-from-schedule', new Route('/api/v1/schedule-events/{uuid}/start-attendance', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->startFromSchedule($r),
+        'attendance.start_from_schedule'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('attendances.update', new Route('/api/v1/attendances/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->update($r),
+        'attendance.update_own'
+    ),
+], [], [], '', [], ['PUT']));
+
+$routes->add('attendances.finalize', new Route('/api/v1/attendances/{uuid}/finalize', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->finalize($r),
+        'attendance.finalize'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('attendances.cancel', new Route('/api/v1/attendances/{uuid}/cancel', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->cancel($r),
+        'attendance.cancel'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('attendances.no-show', new Route('/api/v1/attendances/{uuid}/no-show', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->noShow($r),
+        'attendance.mark_no_show'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('attendances.substitute-professional', new Route('/api/v1/attendances/{uuid}/substitute-professional', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $attendanceController->substituteProfessional($r),
+        'attendance.substitute_professional'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('clinical-records.index-by-attendance', new Route('/api/v1/attendances/{uuid}/clinical-records', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->indexByAttendance($r),
+        'clinical_record.view_own'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('clinical-records.store', new Route('/api/v1/attendances/{uuid}/clinical-records', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->store($r),
+        'clinical_record.create'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('clinical-records.show', new Route('/api/v1/clinical-records/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->show($r),
+        'clinical_record.view_own'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('clinical-records.update', new Route('/api/v1/clinical-records/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->update($r),
+        'clinical_record.update_own'
+    ),
+], [], [], '', [], ['PUT']));
+
+$routes->add('clinical-records.finalize', new Route('/api/v1/clinical-records/{uuid}/finalize', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->finalize($r),
+        'clinical_record.finalize'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('clinical-records.complement', new Route('/api/v1/clinical-records/{uuid}/complement', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->complement($r),
+        'clinical_record.complement'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('clinical-records.delete', new Route('/api/v1/clinical-records/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $clinicalRecordController->delete($r),
+        'clinical_record.cancel'
+    ),
+], [], [], '', [], ['DELETE']));
+
+$routes->add('audio-records.store', new Route('/api/v1/attendances/{uuid}/audio-records', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $audioRecordController->store($r),
+        'audio_record.create'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('audio-records.index-by-attendance', new Route('/api/v1/attendances/{uuid}/audio-records', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $audioRecordController->indexByAttendance($r),
+        'audio_record.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('audio-records.show', new Route('/api/v1/audio-records/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $audioRecordController->show($r),
+        'audio_record.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('audio-records.delete', new Route('/api/v1/audio-records/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $audioRecordController->delete($r),
+        'audio_record.delete'
+    ),
+], [], [], '', [], ['DELETE']));
+
+$routes->add('patients.timeline', new Route('/api/v1/patients/{uuid}/timeline', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $patientTimelineController->index($r),
+        'patient_timeline.view'
+    ),
+], [], [], '', [], ['GET']));
 
 $routes->add('admin.users.protected', new Route('/api/v1/admin/users', [
     '_controller' => static fn (Request $request): array => $guarded(

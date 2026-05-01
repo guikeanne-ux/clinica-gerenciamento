@@ -27,8 +27,15 @@ final class ScheduleEventRepository
         $qb = DB::table('schedule_events as e')
             ->leftJoin('schedule_event_types as et', 'et.uuid', '=', 'e.event_type_uuid')
             ->leftJoin('professionals as p', 'p.uuid', '=', 'e.professional_uuid')
+            ->leftJoin('patients as pa', 'pa.uuid', '=', 'e.patient_uuid')
             ->whereNull('e.deleted_at')
             ->whereNull('et.deleted_at')
+            ->where(static function (Builder $q): void {
+                $q->whereNull('p.deleted_at')->orWhereNull('e.professional_uuid');
+            })
+            ->where(static function (Builder $q): void {
+                $q->whereNull('pa.deleted_at')->orWhereNull('e.patient_uuid');
+            })
             ->select([
                 'e.uuid',
                 'e.title',
@@ -57,6 +64,8 @@ final class ScheduleEventRepository
                 'et.category as event_type_category',
                 'et.color as event_type_color',
                 'p.schedule_color as professional_schedule_color',
+                'p.full_name as professional_name',
+                'pa.full_name as patient_name',
             ]);
 
         if (! $canViewAll) {

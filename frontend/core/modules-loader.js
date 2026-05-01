@@ -16,6 +16,7 @@ const moduleMap = {
   'specialties/specialties': () => import('../modules/specialties/specialties.js'),
   'schedule/schedule-page':        () => import('../modules/schedule/schedule-page.js'),
   'schedule/appointment-types':    () => import('../modules/schedule/appointment-types.js'),
+  'attendances/attendance-detail': () => import('../modules/attendances/attendance-detail.js'),
   'design-system/design-system': () => import('../modules/design-system/design-system.js'),
   'errors/error-403': () => import('../modules/errors/error-403.js'),
   'errors/error-404': () => import('../modules/errors/error-404.js'),

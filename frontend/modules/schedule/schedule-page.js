@@ -1,5 +1,6 @@
 import { toast } from '../../core/js/toast.js';
 import { permissionService } from '../../core/auth/permission-service.js';
+import { sessionStore } from '../../core/auth/session-store.js';
 import { scheduleService } from './schedule-service.js';
 import {
   renderScheduleCalendarView,
@@ -30,14 +31,21 @@ let _state = null;
 let _loadToken = 0;
 
 function buildPermissions() {
+  const currentUser = sessionStore.getUser() || {};
+
   return {
+    currentUserUuid: String(currentUser?.uuid || '').trim(),
     canCreate: permissionService.has('schedule.create'),
     canUpdate: permissionService.has('schedule.update'),
     canCancel: permissionService.has('schedule.cancel'),
     canDelete: permissionService.has('schedule.delete'),
     canOverrideConflict: permissionService.has('schedule.override_conflict'),
+    canMutateAnySchedule: permissionService.has('schedule.view_all'),
+    canMutateOwnSchedule: permissionService.has('schedule.view'),
     canCreateAttendance: permissionService.has('schedule.create_attendance'),
-    attendanceModuleAvailable: false,
+    attendanceModuleAvailable: permissionService.has('attendance.start_from_schedule'),
+    canStartAnyAttendance: permissionService.has('attendance.update_all'),
+    currentProfessionalUuid: String(currentUser?.professional_uuid || '').trim(),
     canConfirm: permissionService.has('schedule.update'),
   };
 }
@@ -88,6 +96,24 @@ function getLookups() {
 
 function getEventByUuid(uuid) {
   return _state.events.find((item) => item.uuid === uuid) || null;
+}
+
+function canMutateEvent(event) {
+  if (!event) return false;
+
+  const perms = _state.permissions || {};
+  if (perms.canMutateAnySchedule) return true;
+  if (!perms.canMutateOwnSchedule) return false;
+
+  const currentUserUuid = String(perms.currentUserUuid || '').trim();
+  const currentProfessionalUuid = String(perms.currentProfessionalUuid || '').trim();
+  const eventProfessionalUuid = String(event.professional_uuid || '').trim();
+  const eventOwnerUserUuid = String(event.created_by_user_uuid || '').trim();
+
+  const isEventProfessional = currentProfessionalUuid !== '' && eventProfessionalUuid !== '' && currentProfessionalUuid === eventProfessionalUuid;
+  const isEventCreator = currentUserUuid !== '' && eventOwnerUserUuid !== '' && currentUserUuid === eventOwnerUserUuid;
+
+  return isEventProfessional || isEventCreator;
 }
 
 function parseDate(value) {
@@ -815,15 +841,21 @@ async function openEventForm(mode, eventUuid = '') {
     return;
   }
 
-  if (mode === 'edit' && !_state.permissions.canUpdate) {
-    toast.error('Você não tem permissão para editar eventos.');
-    return;
-  }
-
   if (mode === 'edit') {
+    const eventFromList = getEventByUuid(eventUuid);
+    if (eventFromList && !canMutateEvent(eventFromList)) {
+      toast.error('Você não pode editar este compromisso.');
+      return;
+    }
+
     const getRes = await scheduleService.getEvent(eventUuid);
     if (!getRes.success || !getRes.data) {
       toast.error(getRes.message || 'Não foi possível carregar o evento para edição.');
+      return;
+    }
+
+    if (!canMutateEvent(getRes.data)) {
+      toast.error('Você não pode editar este compromisso.');
       return;
     }
 
@@ -1052,18 +1084,27 @@ async function handleSimpleAction({
 async function handleDetailsAction(action) {
   const eventUuid = _state.selectedEventUuid;
   if (!eventUuid) return;
+  const selectedEvent = getEventByUuid(eventUuid);
+  const mutationActions = ['edit', 'cancel', 'reschedule', 'absence', 'confirm', 'done', 'delete'];
+  if (mutationActions.includes(action) && !canMutateEvent(selectedEvent)) {
+    toast.error('Você não pode alterar este compromisso.');
+    return;
+  }
 
   if (action === 'edit') {
+    closeScheduleModal(document.getElementById('schedule-event-details-modal'));
     await openEventForm('edit', eventUuid);
     return;
   }
 
   if (action === 'cancel') {
+    closeScheduleModal(document.getElementById('schedule-event-details-modal'));
     openCancelModal();
     return;
   }
 
   if (action === 'reschedule') {
+    closeScheduleModal(document.getElementById('schedule-event-details-modal'));
     openRescheduleModal();
     return;
   }
@@ -1115,12 +1156,30 @@ async function handleDetailsAction(action) {
   }
 
   if (action === 'attendance') {
-    toast.info('Atendimento será liberado na próxima etapa.');
+    const res = await scheduleService.startAttendance(eventUuid);
+    if (!res.success) {
+      toast.error(res.message || 'Não foi possível iniciar atendimento.');
+      return;
+    }
+    const attendanceUuid = res?.data?.uuid;
+    if (!attendanceUuid) {
+      toast.error('Resposta inválida ao iniciar atendimento.');
+      return;
+    }
+    closeScheduleModal(document.getElementById('schedule-event-details-modal'));
+    window.dispatchEvent(new CustomEvent('app:navigate', { detail: { path: `/attendances/${attendanceUuid}` } }));
+    toast.success('Atendimento iniciado com sucesso.');
   }
 }
 
 async function loadReferenceData() {
-  const calls = [scheduleService.listEventTypes()];
+  const calls = [];
+
+  if (permissionService.has('schedule.event_types.view')) {
+    calls.push(scheduleService.listEventTypes());
+  } else {
+    calls.push(Promise.resolve({ success: true, data: [] }));
+  }
 
   if (permissionService.has('professionals.view')) {
     calls.push(scheduleService.listProfessionals());
@@ -1140,15 +1199,15 @@ async function loadReferenceData() {
   _state.professionals = professionalsRes.success ? (professionalsRes.data || []) : [];
   _state.patients = patientsRes.success ? (patientsRes.data || []) : [];
 
-  if (!typesRes.success) {
+  if (!typesRes.success && typesRes?.meta?.error_code !== 'FORBIDDEN') {
     toast.error(typesRes.message || 'Não foi possível carregar os tipos de evento.');
   }
 
-  if (!professionalsRes.success) {
+  if (!professionalsRes.success && professionalsRes?.meta?.error_code !== 'FORBIDDEN') {
     toast.error(professionalsRes.message || 'Não foi possível carregar os profissionais para filtro.');
   }
 
-  if (!patientsRes.success) {
+  if (!patientsRes.success && patientsRes?.meta?.error_code !== 'FORBIDDEN') {
     toast.error(patientsRes.message || 'Não foi possível carregar os pacientes para filtro.');
   }
 }

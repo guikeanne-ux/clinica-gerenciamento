@@ -24,7 +24,10 @@ final class GetScheduleEventService
             throw new NotFoundException('Evento da agenda não encontrado.');
         }
 
-        if (! $this->permissions->has($authUser, 'schedule.view_all')) {
+        $canViewAll = $this->permissions->has($authUser, 'schedule.view_all')
+            || $this->permissions->has($authUser, 'schedule.view');
+
+        if (! $canViewAll) {
             $professionalUuid = (string) ($authUser->professional_uuid ?? '');
             $canViewOwn = $event->created_by_user_uuid === $authUser->uuid;
             $canViewProfessional = $professionalUuid !== '' && $event->professional_uuid === $professionalUuid;

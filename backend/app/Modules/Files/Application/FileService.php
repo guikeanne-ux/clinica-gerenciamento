@@ -16,9 +16,32 @@ use App\Modules\Files\Infrastructure\Optimizers\PdfOptimizer;
 
 final class FileService
 {
-    private const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'pdf', 'mp3', 'wav'];
-    private const ALLOWED_MIMES = ['image/png', 'image/jpeg', 'application/pdf', 'audio/mpeg', 'audio/wav'];
-    private const MAX_SIZE = 5242880;
+    private const ALLOWED_EXTENSIONS = [
+        'png',
+        'jpg',
+        'jpeg',
+        'pdf',
+        'mp3',
+        'wav',
+        'ogg',
+        'webm',
+        'm4a',
+        'aac',
+    ];
+    private const ALLOWED_MIMES = [
+        'image/png',
+        'image/jpeg',
+        'application/pdf',
+        'audio/mpeg',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/ogg',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+        'audio/x-m4a',
+    ];
+    private const MAX_SIZE = 20971520;
 
     public function __construct(private readonly AuditService $auditService = new AuditService())
     {
@@ -40,7 +63,8 @@ final class FileService
             throw new UploadException('Extensão não permitida.', ErrorCode::UNSUPPORTED_FILE_TYPE);
         }
 
-        if (! in_array($mime, self::ALLOWED_MIMES, true)) {
+        $normalizedMime = $this->normalizeMimeType($mime);
+        if (! $this->isAllowedMime($normalizedMime)) {
             throw new UploadException('MIME type não permitido.', ErrorCode::INVALID_MIME_TYPE);
         }
 
@@ -54,14 +78,14 @@ final class FileService
             throw new UploadException('Arquivo acima do limite.', ErrorCode::UPLOAD_TOO_LARGE);
         }
 
-        $optimizedResult = $this->optimizeByMime($mime, $content);
+        $optimizedResult = $this->optimizeByMime($normalizedMime, $content);
         $internalName = Uuid::v4() . '.' . $extension;
 
         $file = FileRecord::query()->create([
             'uuid' => Uuid::v4(),
             'original_name' => $originalName,
             'internal_name' => $internalName,
-            'mime_type' => $mime,
+            'mime_type' => $normalizedMime,
             'extension' => $extension,
             'size_bytes' => strlen($optimizedResult['content']),
             'checksum_hash' => hash('sha256', $optimizedResult['content']),
@@ -166,5 +190,25 @@ final class FileService
         }
 
         return ['content' => $content, 'optimized' => false];
+    }
+
+    private function normalizeMimeType(string $mime): string
+    {
+        $clean = strtolower(trim($mime));
+        if ($clean === '') {
+            return '';
+        }
+
+        $parts = explode(';', $clean, 2);
+        return trim($parts[0]);
+    }
+
+    private function isAllowedMime(string $mime): bool
+    {
+        if ($mime === '') {
+            return false;
+        }
+
+        return in_array($mime, self::ALLOWED_MIMES, true);
     }
 }

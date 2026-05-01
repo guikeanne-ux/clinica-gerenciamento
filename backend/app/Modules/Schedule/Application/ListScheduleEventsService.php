@@ -19,7 +19,8 @@ final class ListScheduleEventsService
 
     public function execute(array $query, User $authUser): array
     {
-        $canViewAll = $this->permissions->has($authUser, 'schedule.view_all');
+        $canViewAll = $this->permissions->has($authUser, 'schedule.view_all')
+            || $this->permissions->has($authUser, 'schedule.view');
         $professionalUuid = $authUser->professional_uuid !== null ? (string) $authUser->professional_uuid : null;
 
         $result = $this->repository->paginateWithFilters(

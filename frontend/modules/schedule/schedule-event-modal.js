@@ -11,6 +11,12 @@ function fullNameFromMap(map, uuid) {
   return map?.[uuid]?.full_name || map?.[uuid]?.name || '—';
 }
 
+function fullNameFromEventOrMap(map, uuid, fallbackFromEvent) {
+  const fromEvent = String(fallbackFromEvent || '').trim();
+  if (fromEvent) return fromEvent;
+  return fullNameFromMap(map, uuid);
+}
+
 function parseDate(value) {
   const date = new Date(String(value || '').replace(' ', 'T'));
   return Number.isNaN(date.getTime()) ? null : date;
@@ -83,6 +89,18 @@ function shouldShowAttendanceAction(event, lookups, permissions = {}) {
     return false;
   }
 
+  const currentProfessionalUuid = String(permissions.currentProfessionalUuid || '').trim();
+  const eventProfessionalUuid = String(event?.professional_uuid || '').trim();
+  const canStartAsAdmin = Boolean(permissions.canStartAnyAttendance);
+  const canStartAsAssignedProfessional =
+    currentProfessionalUuid !== '' &&
+    eventProfessionalUuid !== '' &&
+    currentProfessionalUuid === eventProfessionalUuid;
+
+  if (!canStartAsAdmin && !canStartAsAssignedProfessional) {
+    return false;
+  }
+
   if (!event?.is_attendance) {
     return false;
   }
@@ -98,6 +116,22 @@ function shouldShowAttendanceAction(event, lookups, permissions = {}) {
 
   const eventType = lookups?.eventTypesByUuid?.[event?.event_type_uuid];
   return Boolean(eventType?.can_generate_attendance);
+}
+
+function canMutateEvent(event, permissions = {}) {
+  if (!event) return false;
+  if (permissions.canMutateAnySchedule) return true;
+  if (!permissions.canMutateOwnSchedule) return false;
+
+  const currentUserUuid = String(permissions.currentUserUuid || '').trim();
+  const currentProfessionalUuid = String(permissions.currentProfessionalUuid || '').trim();
+  const eventProfessionalUuid = String(event.professional_uuid || '').trim();
+  const eventOwnerUserUuid = String(event.created_by_user_uuid || '').trim();
+
+  const isEventProfessional = currentProfessionalUuid !== '' && eventProfessionalUuid !== '' && currentProfessionalUuid === eventProfessionalUuid;
+  const isEventCreator = currentUserUuid !== '' && eventOwnerUserUuid !== '' && currentUserUuid === eventOwnerUserUuid;
+
+  return isEventProfessional || isEventCreator;
 }
 
 export function renderScheduleModals() {
@@ -170,22 +204,30 @@ export function closeScheduleModal(modalElement) {
 
 export function renderScheduleEventDetails(event, lookups, permissions = {}) {
   const eventTypeName = event.event_type_name || lookups?.eventTypesByUuid?.[event.event_type_uuid]?.name || '—';
-  const professionalName = fullNameFromMap(lookups?.professionalsByUuid, event.professional_uuid);
-  const patientName = fullNameFromMap(lookups?.patientsByUuid, event.patient_uuid);
-  const canMutate = event.status !== 'cancelado';
+  const professionalName = fullNameFromEventOrMap(
+    lookups?.professionalsByUuid,
+    event.professional_uuid,
+    event.professional_name
+  );
+  const patientName = fullNameFromEventOrMap(
+    lookups?.patientsByUuid,
+    event.patient_uuid,
+    event.patient_name
+  );
+  const canMutate = event.status !== 'cancelado' && canMutateEvent(event, permissions);
   const statusText = statusLabel(event.status || '');
   const detailsStatusClass = statusClassName(event.status || '');
   const hasDescription = String(event.description || '').trim() !== '';
   const canShowAttendanceButton = shouldShowAttendanceAction(event, lookups, permissions);
 
   const actionButtons = [
-    permissions.canUpdate ? `<button type="button" class="btn btn-secondary btn-sm" data-schedule-detail-action="edit">Editar</button>` : '',
-    permissions.canConfirm && canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="confirm">Confirmar</button>` : '',
-    permissions.canUpdate && canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="absence">Marcar falta</button>` : '',
-    permissions.canUpdate && canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="done">Marcar realizado</button>` : '',
-    permissions.canUpdate && canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="reschedule">Remarcar</button>` : '',
-    permissions.canCancel && canMutate ? `<button type="button" class="btn btn-danger btn-sm" data-schedule-detail-action="cancel">Cancelar</button>` : '',
-    permissions.canDelete ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="delete">Excluir</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-secondary btn-sm" data-schedule-detail-action="edit">Editar</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="confirm">Confirmar</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="absence">Marcar falta</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="done">Marcar realizado</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="reschedule">Remarcar</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-danger btn-sm" data-schedule-detail-action="cancel">Cancelar</button>` : '',
+    canMutate ? `<button type="button" class="btn btn-ghost btn-sm" data-schedule-detail-action="delete">Excluir</button>` : '',
     canShowAttendanceButton ? `<button type="button" class="btn btn-outline btn-sm" data-schedule-detail-action="attendance">Iniciar atendimento</button>` : '',
   ].filter(Boolean).join('');
 

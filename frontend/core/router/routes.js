@@ -41,6 +41,14 @@ export const routes = [
     breadcrumb: ['Início', 'Agenda', 'Tipos de Compromisso'],
   },
   {
+    path: '/attendances/:uuid',
+    layout: 'app',
+    guard: guardPermission('attendance.view'),
+    module: () => import('../modules-loader.js').then(m => m.loadModule('attendances/attendance-detail')),
+    title: 'Atendimento',
+    breadcrumb: ['Início', 'Atendimento'],
+  },
+  {
     path: '/patients',
     layout: 'app',
     guard: guardPermission('patients.view'),

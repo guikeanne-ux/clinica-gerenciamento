@@ -34,7 +34,7 @@ final class ErrorHandler
         return [
             'status' => 500,
             'body' => ApiResponse::error(
-                'Não foi possível concluir a ação agora. Tente novamente em alguns instantes.',
+                self::detailedUnexpectedMessage($throwable),
                 [],
                 [
                     'request_id' => $requestId,
@@ -75,5 +75,15 @@ final class ErrorHandler
             json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL,
             FILE_APPEND
         );
+    }
+
+    private static function detailedUnexpectedMessage(Throwable $throwable): string
+    {
+        $message = trim($throwable->getMessage());
+        if ($message === '') {
+            return 'Erro interno inesperado. Tente novamente em alguns instantes.';
+        }
+
+        return 'Erro interno inesperado: ' . $message;
     }
 }

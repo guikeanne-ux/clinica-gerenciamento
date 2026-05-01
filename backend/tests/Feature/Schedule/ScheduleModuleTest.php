@@ -616,7 +616,7 @@ it('bloqueia cancelamento sem permissão schedule.cancel', function (): void {
     expect($res['status'])->toBe(403);
 });
 
-it('restringe listagem e detalhe sem schedule.view_all', function (): void {
+it('permite listagem e detalhe com schedule.view mesmo sem schedule.view_all', function (): void {
     $adminToken = ScheduleApi::tokenFor();
     $eventTypeUuid = ScheduleApi::createEventType($adminToken);
 
@@ -668,13 +668,13 @@ it('restringe listagem e detalhe sem schedule.view_all', function (): void {
     $listPayload = json_decode($listRes['body'], true, flags: JSON_THROW_ON_ERROR);
 
     expect($listRes['status'])->toBe(200);
-    expect($listPayload['data']['pagination']['total'])->toBe(0);
+    expect($listPayload['data']['pagination']['total'])->toBe(1);
 
     $showRes = ApiRequester::call('GET', '/api/v1/schedule/events/' . $uuid, [], [
         'Authorization' => 'Bearer ' . $viewerToken,
     ]);
 
-    expect($showRes['status'])->toBe(404);
+    expect($showRes['status'])->toBe(200);
 });
 
 it('auditoria registra criação edição e exclusão de evento', function (): void {

@@ -124,6 +124,12 @@ export const router = {
     window.addEventListener('auth:expired', () => {
       navigate('/login');
     });
+    window.addEventListener('app:navigate', (event) => {
+      const path = event?.detail?.path;
+      if (typeof path === 'string' && path.trim() !== '') {
+        navigate(path);
+      }
+    });
 
     resolve(location.pathname + location.search);
   },

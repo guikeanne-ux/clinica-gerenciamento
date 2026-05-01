@@ -14,6 +14,12 @@ function sanitizeUserMessage(message, fallback) {
   return withoutUuid;
 }
 
+function firstFieldError(errors) {
+  if (!Array.isArray(errors)) return '';
+  const first = errors.find((item) => item && typeof item.message === 'string' && item.message.trim() !== '');
+  return first ? String(first.message).trim() : '';
+}
+
 function getHeaders(extra = {}) {
   const headers = { 'Content-Type': 'application/json', ...extra };
   const token = sessionStore.getToken();
@@ -79,7 +85,7 @@ async function request(method, path, body = null, options = {}) {
   }
 
   if (res.status === 422) {
-    toast.warning('Revise os campos destacados.');
+    toast.warning(firstFieldError(json?.errors) || sanitizeUserMessage(json?.message, 'Revise os campos destacados.'));
   }
 
   if (res.status === 429) {
@@ -87,7 +93,9 @@ async function request(method, path, body = null, options = {}) {
   }
 
   if (res.status >= 500) {
-    toast.error('Não foi possível concluir a ação agora. Tente novamente em alguns instantes.');
+    const reqId = String(json?.meta?.request_id || '').trim();
+    const detailed = sanitizeUserMessage(json?.message, 'Erro interno no servidor.');
+    toast.error(reqId ? `${detailed} (Ref: ${reqId})` : detailed);
   }
 
   return json;

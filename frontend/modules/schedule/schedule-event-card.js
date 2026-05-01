@@ -115,13 +115,17 @@ export function renderScheduleEventCard(event, options = {}) {
   const eventTypeName = escapeHtml(event?.event_type_name || lookups?.eventTypesByUuid?.[event?.event_type_uuid]?.name || 'Evento');
 
   const professionalName = shortName(
-    lookups?.professionalsByUuid?.[event?.professional_uuid]?.full_name ||
+    event?.professional_name ||
+      lookups?.professionalsByUuid?.[event?.professional_uuid]?.full_name ||
       lookups?.professionalsByUuid?.[event?.professional_uuid]?.name ||
       '',
     ''
   );
 
-  const patientName = shortName(lookups?.patientsByUuid?.[event?.patient_uuid]?.full_name || '', '');
+  const patientName = shortName(
+    event?.patient_name || lookups?.patientsByUuid?.[event?.patient_uuid]?.full_name || '',
+    ''
+  );
 
   const timeLabel = `${formatTime(event?.starts_at)} - ${formatTime(event?.ends_at)}`;
   const color = getEventColor(event, lookups);

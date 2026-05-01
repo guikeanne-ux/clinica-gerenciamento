@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Schedule\Presentation;
 
+use App\Core\Exceptions\AuthorizationException;
 use App\Core\Http\JsonResponse;
 use App\Core\Http\Request;
 use App\Core\Support\ApiResponse;
+use App\Modules\ACL\Application\PermissionService;
+use App\Modules\Auth\Infrastructure\Models\User;
+use App\Modules\Schedule\Infrastructure\Models\ScheduleEvent;
 use App\Modules\Schedule\Application\CancelScheduleEventService;
 use App\Modules\Schedule\Application\ConfirmScheduleEventService;
 use App\Modules\Schedule\Application\CreateScheduleEventService;
@@ -20,6 +24,8 @@ use App\Modules\Schedule\Application\UpdateScheduleEventService;
 
 final class ScheduleEventController
 {
+    private readonly PermissionService $permissions;
+
     public function __construct(
         private readonly ListScheduleEventsService $listService = new ListScheduleEventsService(),
         private readonly CreateScheduleEventService $createService = new CreateScheduleEventService(),
@@ -32,6 +38,7 @@ final class ScheduleEventController
         private readonly MarkScheduleEventDoneService $markDoneService = new MarkScheduleEventDoneService(),
         private readonly RescheduleScheduleEventService $rescheduleService = new RescheduleScheduleEventService()
     ) {
+        $this->permissions = new PermissionService();
     }
 
     public function index(Request $request): array
@@ -61,6 +68,11 @@ final class ScheduleEventController
 
     public function update(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $event = $this->updateService->execute(
             (string) $request->attribute('uuid'),
             $request->body,
@@ -72,6 +84,11 @@ final class ScheduleEventController
 
     public function delete(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $actor = (string) $request->attribute('auth_user')->uuid;
         $this->deleteService->execute((string) $request->attribute('uuid'), $actor);
 
@@ -80,6 +97,11 @@ final class ScheduleEventController
 
     public function cancel(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $actor = (string) $request->attribute('auth_user')->uuid;
         $event = $this->cancelService->execute((string) $request->attribute('uuid'), $request->body, $actor);
 
@@ -88,6 +110,11 @@ final class ScheduleEventController
 
     public function markAbsence(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $actor = (string) $request->attribute('auth_user')->uuid;
         $event = $this->markAbsenceService->execute((string) $request->attribute('uuid'), $actor);
 
@@ -96,6 +123,11 @@ final class ScheduleEventController
 
     public function confirm(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $actor = (string) $request->attribute('auth_user')->uuid;
         $event = $this->confirmService->execute((string) $request->attribute('uuid'), $actor);
 
@@ -104,6 +136,11 @@ final class ScheduleEventController
 
     public function markDone(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $actor = (string) $request->attribute('auth_user')->uuid;
         $event = $this->markDoneService->execute((string) $request->attribute('uuid'), $actor);
 
@@ -112,6 +149,11 @@ final class ScheduleEventController
 
     public function reschedule(Request $request): array
     {
+        $this->assertCanMutateEvent(
+            (string) $request->attribute('uuid'),
+            $request->attribute('auth_user')
+        );
+
         $event = $this->rescheduleService->execute(
             (string) $request->attribute('uuid'),
             $request->body,
@@ -119,5 +161,29 @@ final class ScheduleEventController
         );
 
         return JsonResponse::make(ApiResponse::success('Evento remarcado com sucesso.', $event->toArray()));
+    }
+
+    private function assertCanMutateEvent(string $eventUuid, User $authUser): void
+    {
+        if ($this->permissions->has($authUser, 'schedule.view_all')) {
+            return;
+        }
+
+        /** @var ScheduleEvent|null $event */
+        $event = ScheduleEvent::query()->where('uuid', $eventUuid)->whereNull('deleted_at')->first();
+        if ($event === null) {
+            return;
+        }
+
+        $sameCreator = (string) $event->created_by_user_uuid === (string) $authUser->uuid;
+        $sameProfessional = $authUser->professional_uuid !== null
+            && (string) $authUser->professional_uuid !== ''
+            && (string) $event->professional_uuid === (string) $authUser->professional_uuid;
+
+        if ($sameCreator || $sameProfessional) {
+            return;
+        }
+
+        throw new AuthorizationException('Você pode alterar apenas compromissos próprios.');
     }
 }

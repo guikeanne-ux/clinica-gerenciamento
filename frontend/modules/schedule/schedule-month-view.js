@@ -40,6 +40,12 @@ function fullNameFromLookup(map, uuid) {
   return map?.[uuid]?.full_name || map?.[uuid]?.name || '—';
 }
 
+function fullNameFromEventOrLookup(map, uuid, fallbackFromEvent) {
+  const fromEvent = String(fallbackFromEvent || '').trim();
+  if (fromEvent) return fromEvent;
+  return fullNameFromLookup(map, uuid);
+}
+
 function statusLabel(status) {
   const labels = {
     agendado: 'Agendado',
@@ -150,8 +156,16 @@ export function renderScheduleMonthDayEventsList({ date, events, lookups }) {
 
   const rows = (events || []).map((event) => {
     const eventTypeName = event.event_type_name || lookups?.eventTypesByUuid?.[event.event_type_uuid]?.name || '—';
-    const professionalName = fullNameFromLookup(lookups?.professionalsByUuid, event.professional_uuid);
-    const patientName = fullNameFromLookup(lookups?.patientsByUuid, event.patient_uuid);
+    const professionalName = fullNameFromEventOrLookup(
+      lookups?.professionalsByUuid,
+      event.professional_uuid,
+      event.professional_name
+    );
+    const patientName = fullNameFromEventOrLookup(
+      lookups?.patientsByUuid,
+      event.patient_uuid,
+      event.patient_name
+    );
     const color = getEventColor(event, lookups);
 
     return `

@@ -109,6 +109,9 @@ export const scheduleService = {
   async rescheduleEvent(uuid, payload) {
     return http.post(`/api/v1/schedule/events/${uuid}/reschedule`, payload, { context: 'page' });
   },
+  async startAttendance(uuid) {
+    return http.post(`/api/v1/schedule-events/${uuid}/start-attendance`, {}, { context: 'page' });
+  },
 
   async listEventTypes() {
     const res = await http.get('/api/v1/schedule/event-types', { context: 'page' });

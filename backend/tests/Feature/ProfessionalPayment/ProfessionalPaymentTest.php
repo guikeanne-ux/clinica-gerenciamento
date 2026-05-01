@@ -375,6 +375,45 @@ it('simular fixo por atendimento', function (): void {
 
     $json = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR);
     expect((float) $json['data']['total_amount'])->toBe(500.0);
+    expect($json['data']['financial_generated'])->toBeFalse();
+    expect($json['data']['calculation_memory'])->not->toBeEmpty();
+});
+
+it('simular fixo por atendimento usando valor resolvido da tabela sem exigir bruto', function (): void {
+    $token = PersonApi::tokenFor();
+    $professionalUuid = ProfessionalPaymentApi::createProfessional('12345678924', 'profpay24@clinica.local');
+
+    $table = ApiRequester::call('POST', '/api/v1/payment-tables', [
+        'name' => 'Tabela Simulação',
+        'calculation_type' => 'fixed_per_attendance',
+        'default_fixed_amount' => 80,
+        'effective_start_date' => '2026-01-01',
+    ], ['Authorization' => 'Bearer ' . $token]);
+    $tableUuid = json_decode($table['body'], true, flags: JSON_THROW_ON_ERROR)['data']['uuid'];
+
+    ApiRequester::call('POST', '/api/v1/payment-tables/' . $tableUuid . '/items', [
+        'fixed_value' => 120,
+        'appointment_type' => 'terapia_individual',
+        'effective_start_date' => '2026-01-01',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    ApiRequester::call('POST', '/api/v1/professionals/' . $professionalUuid . '/payment-configs', [
+        'payment_mode' => 'fixed_per_attendance',
+        'payment_table_uuid' => $tableUuid,
+        'effective_start_date' => '2026-01-01',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $res = ApiRequester::call('POST', '/api/v1/professionals/' . $professionalUuid . '/simulate-payout', [
+        'simulation_type' => 'single_attendance',
+        'reference_month' => '2026-02',
+        'appointment_type' => 'terapia_individual',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $payload = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR);
+    expect($res['status'])->toBe(200);
+    expect((float) $payload['data']['total_amount'])->toBe(120.0);
+    expect($payload['data']['rule_resolution']['payment_table_uuid'])->toBe($tableUuid);
+    expect($payload['data']['rule_resolution']['payment_table_item'])->not->toBeNull();
 });
 
 it('simular fixo mensal', function (): void {
@@ -436,6 +475,49 @@ it('simular híbrido com quantidade acima do limite', function (): void {
 
     $json = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR);
     expect((float) $json['data']['total_amount'])->toBe(4000.0);
+});
+
+it('permite valor manual apenas como override opcional com justificativa', function (): void {
+    $professionalUuid = ProfessionalPaymentApi::createProfessional('12345678925', 'profpay25@clinica.local');
+    $token = PersonApi::tokenFor();
+
+    ApiRequester::call('POST', '/api/v1/professionals/' . $professionalUuid . '/payment-configs', [
+        'payment_mode' => 'fixed_per_attendance',
+        'fixed_per_attendance_amount' => 50,
+        'effective_start_date' => '2026-01-01',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $res = ApiRequester::call('POST', '/api/v1/professionals/' . $professionalUuid . '/simulate-payout', [
+        'simulation_type' => 'period_attendances',
+        'reference_month' => '2026-02',
+        'attendances_count' => 2,
+        'manual_base_amount' => 100,
+        'manual_override_reason' => 'Cenário excepcional de teste',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $payload = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR);
+    expect($res['status'])->toBe(200);
+    expect((float) $payload['data']['total_amount'])->toBe(200.0);
+    expect($payload['data']['manual_override']['enabled'])->toBeTrue();
+});
+
+it('bloqueia valor manual sem justificativa', function (): void {
+    $professionalUuid = ProfessionalPaymentApi::createProfessional('12345678926', 'profpay26@clinica.local');
+    $token = PersonApi::tokenFor();
+
+    ApiRequester::call('POST', '/api/v1/professionals/' . $professionalUuid . '/payment-configs', [
+        'payment_mode' => 'fixed_per_attendance',
+        'fixed_per_attendance_amount' => 50,
+        'effective_start_date' => '2026-01-01',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $res = ApiRequester::call('POST', '/api/v1/professionals/' . $professionalUuid . '/simulate-payout', [
+        'simulation_type' => 'single_attendance',
+        'reference_month' => '2026-02',
+        'manual_base_amount' => 100,
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    expect($res['status'])->toBe(422);
 });
 
 it('bloquear simulação sem permissão', function (): void {

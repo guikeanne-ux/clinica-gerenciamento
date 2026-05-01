@@ -454,7 +454,10 @@ final class PersonService
 
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (! in_array(strlen($digits), [10, 11], true)) {
-            throw new ValidationException('Telefone inválido.', [['field' => 'phone', 'message' => 'Telefone inválido.']]);
+            throw new ValidationException('Telefone inválido.', [[
+                'field' => 'phone',
+                'message' => 'Telefone inválido.',
+            ]]);
         }
     }
 
@@ -465,7 +468,10 @@ final class PersonService
         }
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (strlen($digits) !== 8) {
-            throw new ValidationException('CEP inválido.', [['field' => 'address_zipcode', 'message' => 'CEP inválido.']]);
+            throw new ValidationException('CEP inválido.', [[
+                'field' => 'address_zipcode',
+                'message' => 'CEP inválido.',
+            ]]);
         }
     }
 
@@ -489,7 +495,10 @@ final class PersonService
 
         $digits = preg_replace('/\D/', '', $value) ?? '';
         if (! in_array(strlen($digits), [11, 14], true)) {
-            throw new ValidationException('CPF/CNPJ inválido.', [['field' => 'document', 'message' => 'CPF/CNPJ inválido.']]);
+            throw new ValidationException('CPF/CNPJ inválido.', [[
+                'field' => 'document',
+                'message' => 'CPF/CNPJ inválido.',
+            ]]);
         }
     }
 }

@@ -11,7 +11,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @property string $uuid
  * @property string $payment_table_uuid
+ * @property string|null $specialty
+ * @property string|null $appointment_type
+ * @property string|null $health_plan_uuid
+ * @property string|null $procedure_code
  * @property float|null $fixed_value
+ * @property float|null $percentage
+ * @property int|null $duration_minutes
  * @property string|null $updated_at
  * @property string|null $deleted_at
  */

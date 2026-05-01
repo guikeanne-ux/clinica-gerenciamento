@@ -301,60 +301,137 @@ final class ProfessionalPaymentService
 
     public function simulateProfessionalPayout(string $professionalUuid, array $data, string $actor): array
     {
+        $simulationType = trim((string) ($data['simulation_type'] ?? 'by_config'));
         $referenceDate = (string) (
             $data['reference_date'] ?? (($data['reference_month'] ?? date('Y-m')) . '-01')
         );
         $attendances = (int) ($data['attendances_count'] ?? 0);
+        $manualBaseAmount = $this->nullableFloat($data['manual_base_amount'] ?? null);
+        $manualReason = trim((string) ($data['manual_override_reason'] ?? ''));
+        $tableUuidFromInput = trim((string) ($data['payment_table_uuid'] ?? ''));
+        $overrideTableUuid = $tableUuidFromInput !== '' ? $tableUuidFromInput : null;
 
         if ($attendances < 0) {
-            throw new ValidationException('Quantidade de atendimentos inválida.', [['field' => 'attendances_count', 'message' => 'Quantidade de atendimentos inválida.']]);
+            throw new ValidationException('Quantidade de atendimentos inválida.', [[
+                'field' => 'attendances_count',
+                'message' => 'Quantidade de atendimentos inválida.',
+            ]]);
+        }
+
+        if ($manualBaseAmount !== null && $manualBaseAmount < 0) {
+            throw new ValidationException('Valor manual inválido.', [[
+                'field' => 'manual_base_amount',
+                'message' => 'Valor manual para simulação não pode ser negativo.',
+            ]]);
+        }
+
+        if ($manualBaseAmount !== null && $manualReason === '') {
+            throw new ValidationException('Justificativa obrigatória para override manual.', [[
+                'field' => 'manual_override_reason',
+                'message' => 'Informe a justificativa do valor manual para simulação.',
+            ]]);
         }
 
         $resolved = $this->resolveProfessionalPaymentRule($professionalUuid, $referenceDate);
         $config = $resolved['payment_config'];
         $mode = (string) $config['payment_mode'];
+        $effectiveTableUuid = $overrideTableUuid ?? ($config['payment_table_uuid'] ?? null);
+        $tableResolution = $this->resolveTableRuleForSimulation(
+            is_string($effectiveTableUuid) ? $effectiveTableUuid : null,
+            $referenceDate,
+            $data
+        );
+        $quantity = $this->resolveQuantityForSimulation($simulationType, $mode, $attendances);
+        $calculationMemory = [];
+        $calculationDetails = [];
 
         $total = 0.0;
-        $details = [];
-
         if ($mode === 'fixed_per_attendance') {
-            $amount = (float) ($resolved['snapshot']['values_used']['fixed_per_attendance_amount'] ?? 0);
-            $total = $attendances * $amount;
-            $details = ['amount_per_attendance' => $amount];
+            $resolvedAmount = (float) ($resolved['snapshot']['values_used']['fixed_per_attendance_amount'] ?? 0);
+            $amountPerAttendance = $resolvedAmount;
+            $baseSource = 'payment_config';
+
+            if ($tableResolution['resolved_amount'] !== null) {
+                $amountPerAttendance = (float) $tableResolution['resolved_amount'];
+                $baseSource = 'payment_table';
+            }
+
+            if ($manualBaseAmount !== null) {
+                $amountPerAttendance = $manualBaseAmount;
+                $baseSource = 'manual_override';
+            }
+
+            $total = $quantity * $amountPerAttendance;
+            $calculationDetails = [
+                'amount_per_attendance' => round($amountPerAttendance, 2),
+                'attendances_count' => $quantity,
+                'base_source' => $baseSource,
+            ];
+
+            $calculationMemory[] = 'Modo aplicado: fixo por atendimento.';
+            $calculationMemory[] = 'Valor unitário considerado: R$ ' . number_format($amountPerAttendance, 2, ',', '.');
+            $calculationMemory[] = 'Quantidade considerada: ' . (string) $quantity . '.';
+            $calculationMemory[] = 'Total estimado: R$ ' . number_format($total, 2, ',', '.');
         } elseif ($mode === 'fixed_monthly') {
             $total = (float) ($config['fixed_monthly_amount'] ?? 0);
-            $details = ['fixed_monthly_amount' => $total];
+            $calculationDetails = ['fixed_monthly_amount' => round($total, 2)];
+            $calculationMemory[] = 'Modo aplicado: fixo mensal.';
+            $calculationMemory[] = 'Valor mensal vigente: R$ ' . number_format($total, 2, ',', '.');
         } else {
             $base = (float) ($config['hybrid_base_amount'] ?? 0);
             $threshold = (int) ($config['hybrid_threshold_quantity'] ?? 0);
             $extra = (float) ($config['hybrid_extra_amount_per_attendance'] ?? 0);
-            $exceeded = max(0, $attendances - $threshold);
+            $exceeded = max(0, $quantity - $threshold);
             $extraTotal = $exceeded * $extra;
             $total = $base + $extraTotal;
-            $details = [
+
+            $calculationDetails = [
                 'hybrid_base_amount' => $base,
                 'hybrid_threshold_quantity' => $threshold,
                 'hybrid_extra_amount_per_attendance' => $extra,
                 'exceeded_attendances' => $exceeded,
                 'exceeded_total' => $extraTotal,
             ];
+
+            $calculationMemory[] = 'Modo aplicado: híbrido.';
+            $calculationMemory[] = 'Base fixa: R$ ' . number_format($base, 2, ',', '.');
+            $calculationMemory[] = 'Franquia incluída: ' . (string) $threshold . ' atendimentos.';
+            $calculationMemory[] = 'Quantidade simulada: ' . (string) $quantity . '.';
+            $calculationMemory[] = 'Excedente: ' . (string) $exceeded . ' x R$ ' . number_format($extra, 2, ',', '.');
+            $calculationMemory[] = 'Total estimado: R$ ' . number_format($total, 2, ',', '.');
         }
 
         $payload = [
+            'simulation_type' => $simulationType,
             'reference_month' => (string) ($data['reference_month'] ?? substr($referenceDate, 0, 7)),
             'reference_date' => $referenceDate,
-            'attendances_count' => $attendances,
+            'attendances_count' => $quantity,
             'payment_mode' => $mode,
-            'calculation_details' => $details,
+            'calculation_details' => $calculationDetails,
+            'calculation_memory' => $calculationMemory,
+            'manual_override' => [
+                'enabled' => $manualBaseAmount !== null,
+                'manual_base_amount' => $manualBaseAmount,
+                'reason' => $manualReason !== '' ? $manualReason : null,
+            ],
+            'rule_resolution' => [
+                'payment_config_uuid' => $config['uuid'] ?? null,
+                'payment_table_uuid' => $effectiveTableUuid,
+                'payment_table' => $tableResolution['table'],
+                'payment_table_item' => $tableResolution['item'],
+                'resolved_amount_from_table' => $tableResolution['resolved_amount'],
+            ],
             'total_amount' => round($total, 2),
             'snapshot' => $resolved['snapshot'],
             'hybrid_policy_note' => $resolved['hybrid_policy_note'],
+            'financial_generated' => false,
         ];
 
         $this->audit->log('professional_payment.simulated', $actor, [
             'professional_uuid' => $professionalUuid,
             'reference_date' => $referenceDate,
-            'attendances_count' => $attendances,
+            'attendances_count' => $quantity,
+            'simulation_type' => $simulationType,
             'payment_mode' => $mode,
             'total_amount' => $payload['total_amount'],
         ]);
@@ -365,7 +442,10 @@ final class ProfessionalPaymentService
     private function validatePaymentTable(array $data): void
     {
         if (trim((string) ($data['name'] ?? '')) === '') {
-            throw new ValidationException('Nome da tabela é obrigatório.', [['field' => 'name', 'message' => 'Nome da tabela é obrigatório.']]);
+            throw new ValidationException('Nome da tabela é obrigatório.', [[
+                'field' => 'name',
+                'message' => 'Nome da tabela é obrigatório.',
+            ]]);
         }
 
         if (! in_array(($data['status'] ?? 'active'), ['active', 'inactive'], true)) {
@@ -374,11 +454,17 @@ final class ProfessionalPaymentService
 
         $types = ['fixed_per_attendance', 'fixed_monthly', 'hybrid', 'custom'];
         if (! in_array((string) ($data['calculation_type'] ?? ''), $types, true)) {
-            throw new ValidationException('Tipo de cálculo inválido.', [['field' => 'calculation_type', 'message' => 'Tipo de cálculo inválido.']]);
+            throw new ValidationException('Tipo de cálculo inválido.', [[
+                'field' => 'calculation_type',
+                'message' => 'Tipo de cálculo inválido.',
+            ]]);
         }
 
         if (trim((string) ($data['effective_start_date'] ?? '')) === '') {
-            throw new ValidationException('Data de início da vigência é obrigatória.', [['field' => 'effective_start_date', 'message' => 'Data de início da vigência é obrigatória.']]);
+            throw new ValidationException('Data de início da vigência é obrigatória.', [[
+                'field' => 'effective_start_date',
+                'message' => 'Data de início da vigência é obrigatória.',
+            ]]);
         }
 
         $this->assertNonNegative($data['default_fixed_amount'] ?? null, 'default_fixed_amount');
@@ -396,7 +482,10 @@ final class ProfessionalPaymentService
     private function validatePaymentTableItem(array $data): void
     {
         if (trim((string) ($data['effective_start_date'] ?? '')) === '') {
-            throw new ValidationException('Data de início da vigência do item é obrigatória.', [['field' => 'effective_start_date', 'message' => 'Data de início da vigência do item é obrigatória.']]);
+            throw new ValidationException('Data de início da vigência do item é obrigatória.', [[
+                'field' => 'effective_start_date',
+                'message' => 'Data de início da vigência do item é obrigatória.',
+            ]]);
         }
 
         $this->assertNonNegative($data['fixed_value'] ?? null, 'fixed_value');
@@ -405,16 +494,25 @@ final class ProfessionalPaymentService
         if (isset($data['percentage'])) {
             $percentage = (float) $data['percentage'];
             if ($percentage < 0 || $percentage > 100) {
-                throw new ValidationException('percentage deve estar entre 0 e 100.', [['field' => 'percentage', 'message' => 'percentage deve estar entre 0 e 100.']]);
+                throw new ValidationException('percentage deve estar entre 0 e 100.', [[
+                    'field' => 'percentage',
+                    'message' => 'percentage deve estar entre 0 e 100.',
+                ]]);
             }
         }
 
         if (isset($data['duration_minutes']) && (int) $data['duration_minutes'] <= 0) {
-            throw new ValidationException('duration_minutes deve ser maior que zero.', [['field' => 'duration_minutes', 'message' => 'duration_minutes deve ser maior que zero.']]);
+            throw new ValidationException('duration_minutes deve ser maior que zero.', [[
+                'field' => 'duration_minutes',
+                'message' => 'duration_minutes deve ser maior que zero.',
+            ]]);
         }
 
         if (isset($data['threshold_quantity']) && (int) $data['threshold_quantity'] < 0) {
-            throw new ValidationException('threshold_quantity deve ser maior ou igual a zero.', [['field' => 'threshold_quantity', 'message' => 'threshold_quantity deve ser maior ou igual a zero.']]);
+            throw new ValidationException('threshold_quantity deve ser maior ou igual a zero.', [[
+                'field' => 'threshold_quantity',
+                'message' => 'threshold_quantity deve ser maior ou igual a zero.',
+            ]]);
         }
     }
 
@@ -427,7 +525,10 @@ final class ProfessionalPaymentService
         $mode = (string) ($data['payment_mode'] ?? '');
 
         if (! in_array($mode, $modes, true)) {
-            throw new ValidationException('Modo de pagamento inválido.', [['field' => 'payment_mode', 'message' => 'Modo de pagamento inválido.']]);
+            throw new ValidationException('Modo de pagamento inválido.', [[
+                'field' => 'payment_mode',
+                'message' => 'Modo de pagamento inválido.',
+            ]]);
         }
 
         if (! in_array(($data['status'] ?? 'active'), ['active', 'inactive'], true)) {
@@ -435,7 +536,10 @@ final class ProfessionalPaymentService
         }
 
         if (trim((string) ($data['effective_start_date'] ?? '')) === '') {
-            throw new ValidationException('Data de início da vigência é obrigatória.', [['field' => 'effective_start_date', 'message' => 'Data de início da vigência é obrigatória.']]);
+            throw new ValidationException('Data de início da vigência é obrigatória.', [[
+                'field' => 'effective_start_date',
+                'message' => 'Data de início da vigência é obrigatória.',
+            ]]);
         }
 
         $this->assertNonNegative($data['fixed_monthly_amount'] ?? null, 'fixed_monthly_amount');
@@ -447,7 +551,10 @@ final class ProfessionalPaymentService
         );
 
         if (isset($data['hybrid_threshold_quantity']) && (int) $data['hybrid_threshold_quantity'] < 0) {
-            throw new ValidationException('hybrid_threshold_quantity deve ser maior ou igual a zero.', [['field' => 'hybrid_threshold_quantity', 'message' => 'hybrid_threshold_quantity deve ser maior ou igual a zero.']]);
+            throw new ValidationException('hybrid_threshold_quantity deve ser maior ou igual a zero.', [[
+                'field' => 'hybrid_threshold_quantity',
+                'message' => 'hybrid_threshold_quantity deve ser maior ou igual a zero.',
+            ]]);
         }
 
         if (($data['payment_table_uuid'] ?? null) !== null) {
@@ -455,7 +562,10 @@ final class ProfessionalPaymentService
         }
 
         if ($mode === 'fixed_monthly' && ! isset($data['fixed_monthly_amount'])) {
-            throw new ValidationException('fixed_monthly_amount é obrigatório para modo fixed_monthly.', [['field' => 'fixed_monthly_amount', 'message' => 'fixed_monthly_amount é obrigatório para modo fixed_monthly.']]);
+            throw new ValidationException('fixed_monthly_amount é obrigatório para modo fixed_monthly.', [[
+                'field' => 'fixed_monthly_amount',
+                'message' => 'fixed_monthly_amount é obrigatório para modo fixed_monthly.',
+            ]]);
         }
 
         if ($mode === 'hybrid') {
@@ -466,7 +576,10 @@ final class ProfessionalPaymentService
             ];
             foreach ($required as $field) {
                 if (! isset($data[$field])) {
-                    throw new ValidationException($field . ' é obrigatório para modo hybrid.', [['field' => $field, 'message' => $field . ' é obrigatório para modo hybrid.']]);
+                    throw new ValidationException($field . ' é obrigatório para modo hybrid.', [[
+                        'field' => $field,
+                        'message' => $field . ' é obrigatório para modo hybrid.',
+                    ]]);
                 }
             }
         }
@@ -580,8 +693,127 @@ final class ProfessionalPaymentService
         }
 
         if ((float) $value < 0) {
-            throw new ValidationException($field . ' não pode ser negativo.', [['field' => $field, 'message' => $field . ' não pode ser negativo.']]);
+            throw new ValidationException($field . ' não pode ser negativo.', [[
+                'field' => $field,
+                'message' => $field . ' não pode ser negativo.',
+            ]]);
         }
+    }
+
+    private function nullableFloat(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (float) $value;
+    }
+
+    private function resolveQuantityForSimulation(string $simulationType, string $paymentMode, int $attendances): int
+    {
+        if ($simulationType === 'single_attendance') {
+            return 1;
+        }
+
+        if ($simulationType === 'monthly_fixed') {
+            return 0;
+        }
+
+        if ($simulationType === 'period_attendances' || $simulationType === 'hybrid') {
+            return $attendances;
+        }
+
+        if ($paymentMode === 'fixed_monthly') {
+            return 0;
+        }
+
+        return $attendances;
+    }
+
+    private function resolveTableRuleForSimulation(?string $paymentTableUuid, string $referenceDate, array $data): array
+    {
+        if ($paymentTableUuid === null || trim($paymentTableUuid) === '') {
+            return [
+                'table' => null,
+                'item' => null,
+                'resolved_amount' => null,
+            ];
+        }
+
+        $table = $this->getPaymentTable($paymentTableUuid);
+        /** @var PaymentTableItem|null $item */
+        $item = PaymentTableItem::query()
+            ->where('payment_table_uuid', $paymentTableUuid)
+            ->whereNull('deleted_at')
+            ->where('effective_start_date', '<=', $referenceDate)
+            ->where(function ($q) use ($referenceDate): void {
+                $q->whereNull('effective_end_date')->orWhere('effective_end_date', '>=', $referenceDate);
+            })
+            ->where(function ($q) use ($data): void {
+                $specialty = trim((string) ($data['specialty'] ?? ''));
+                $appointmentType = trim((string) ($data['appointment_type'] ?? ''));
+                $healthPlanUuid = trim((string) ($data['health_plan_uuid'] ?? ''));
+                $procedureCode = trim((string) ($data['procedure_code'] ?? ''));
+                $durationMinutes = isset($data['duration_minutes']) ? (int) $data['duration_minutes'] : null;
+
+                if ($specialty !== '') {
+                    $q->where(static function ($sq) use ($specialty): void {
+                        $sq->whereNull('specialty')->orWhere('specialty', $specialty);
+                    });
+                }
+
+                if ($appointmentType !== '') {
+                    $q->where(static function ($sq) use ($appointmentType): void {
+                        $sq->whereNull('appointment_type')->orWhere('appointment_type', $appointmentType);
+                    });
+                }
+
+                if ($healthPlanUuid !== '') {
+                    $q->where(static function ($sq) use ($healthPlanUuid): void {
+                        $sq->whereNull('health_plan_uuid')->orWhere('health_plan_uuid', $healthPlanUuid);
+                    });
+                }
+
+                if ($procedureCode !== '') {
+                    $q->where(static function ($sq) use ($procedureCode): void {
+                        $sq->whereNull('procedure_code')->orWhere('procedure_code', $procedureCode);
+                    });
+                }
+
+                if ($durationMinutes !== null && $durationMinutes > 0) {
+                    $q->where(static function ($sq) use ($durationMinutes): void {
+                        $sq->whereNull('duration_minutes')->orWhere('duration_minutes', $durationMinutes);
+                    });
+                }
+            })
+            ->orderByDesc('effective_start_date')
+            ->first();
+
+        $resolvedAmount = null;
+        if ($item !== null && $item->fixed_value !== null) {
+            $resolvedAmount = (float) $item->fixed_value;
+        } elseif ($table->default_fixed_amount !== null) {
+            $resolvedAmount = (float) $table->default_fixed_amount;
+        }
+
+        return [
+            'table' => [
+                'uuid' => $table->uuid,
+                'name' => $table->name,
+                'calculation_type' => $table->calculation_type,
+            ],
+            'item' => $item !== null ? [
+                'uuid' => $item->uuid,
+                'specialty' => $item->specialty,
+                'appointment_type' => $item->appointment_type,
+                'health_plan_uuid' => $item->health_plan_uuid,
+                'procedure_code' => $item->procedure_code,
+                'fixed_value' => $item->fixed_value,
+                'percentage' => $item->percentage,
+                'duration_minutes' => $item->duration_minutes,
+            ] : null,
+            'resolved_amount' => $resolvedAmount,
+        ];
     }
 
     private function applyListFilters($qb, array $query, array $fields): array

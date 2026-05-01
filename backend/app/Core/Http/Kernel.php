@@ -47,7 +47,10 @@ final class Kernel
             return $result;
         } catch (ResourceNotFoundException) {
             return JsonResponse::make(
-                ErrorHandler::handle(new HttpException('Rota não encontrada.', 404, [], 'NOT_FOUND'), $requestId)['body'],
+                ErrorHandler::handle(
+                    new HttpException('Rota não encontrada.', 404, [], 'NOT_FOUND'),
+                    $requestId
+                )['body'],
                 404
             );
         } catch (\Throwable $throwable) {

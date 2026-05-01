@@ -12,7 +12,9 @@
       "Bash(grep -v \"^$\\\\|\\\\[1G\\\\|\\\\[2K\")",
       "Bash(node --input-type=module)",
       "Bash(node -e ' *)",
-      "Bash(node --input-type=module --eval ' *)"
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(./vendor/bin/pest tests/Feature/Schedule/ScheduleModuleTest.php --no-coverage)",
+      "Bash(./vendor/bin/pest tests/Feature/Schedule/ScheduleModuleTest.php tests/Feature/Person/PersonModuleTest.php --no-coverage)"
     ]
   }
 }

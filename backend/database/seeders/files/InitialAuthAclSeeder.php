@@ -47,6 +47,18 @@ return static function (): void {
         'professional_payment.update',
         'professional_payment.delete',
         'professional_payment.simulate',
+        'schedule.view',
+        'schedule.view_all',
+        'schedule.create',
+        'schedule.update',
+        'schedule.cancel',
+        'schedule.delete',
+        'schedule.override_conflict',
+        'schedule.create_attendance',
+        'schedule.event_types.view',
+        'schedule.event_types.create',
+        'schedule.event_types.update',
+        'schedule.event_types.delete',
     ];
 
     foreach ($roles as $role) {
@@ -107,17 +119,29 @@ return static function (): void {
 
     $directionRole = DB::table('roles')->where('name', 'Direção')->first();
     if ($directionRole !== null) {
-        $restricted = DB::table('permissions')
+        $directionPermissions = DB::table('permissions')
             ->whereIn('code', [
                 'professional_payment.view',
                 'professional_payment.create',
                 'professional_payment.update',
                 'professional_payment.delete',
                 'professional_payment.simulate',
+                'schedule.view',
+                'schedule.view_all',
+                'schedule.create',
+                'schedule.update',
+                'schedule.cancel',
+                'schedule.delete',
+                'schedule.override_conflict',
+                'schedule.create_attendance',
+                'schedule.event_types.view',
+                'schedule.event_types.create',
+                'schedule.event_types.update',
+                'schedule.event_types.delete',
             ])
             ->get();
 
-        foreach ($restricted as $permission) {
+        foreach ($directionPermissions as $permission) {
             DB::table('role_permissions')->updateOrInsert([
                 'role_uuid' => $directionRole->uuid,
                 'permission_uuid' => $permission->uuid,
@@ -133,4 +157,47 @@ return static function (): void {
             ]);
         }
     }
+
+    $assignRolePermissions = static function (string $roleName, array $codes): void {
+        $role = DB::table('roles')->where('name', $roleName)->first();
+        if ($role === null || $codes === []) {
+            return;
+        }
+
+        $permissions = DB::table('permissions')->whereIn('code', $codes)->get();
+
+        foreach ($permissions as $permission) {
+            DB::table('role_permissions')->updateOrInsert([
+                'role_uuid' => $role->uuid,
+                'permission_uuid' => $permission->uuid,
+            ], [
+                'uuid' => DB::table('role_permissions')
+                    ->where('role_uuid', $role->uuid)
+                    ->where('permission_uuid', $permission->uuid)
+                    ->value('uuid') ?? Uuid::v4(),
+                'role_uuid' => $role->uuid,
+                'permission_uuid' => $permission->uuid,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+    };
+
+    $assignRolePermissions('Secretária/Recepção', [
+        'schedule.view',
+        'schedule.view_all',
+        'schedule.create',
+        'schedule.update',
+        'schedule.cancel',
+        'schedule.event_types.view',
+    ]);
+
+    $assignRolePermissions('Profissional clínico', [
+        'schedule.view',
+    ]);
+
+    $assignRolePermissions('Auditor/leitura', [
+        'schedule.view',
+        'schedule.view_all',
+    ]);
 };

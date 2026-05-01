@@ -17,6 +17,8 @@ use App\Modules\Person\Presentation\SupplierController;
 use App\Modules\ProfessionalPayment\Presentation\PaymentTableController;
 use App\Modules\ProfessionalPayment\Presentation\PaymentTableItemController;
 use App\Modules\ProfessionalPayment\Presentation\ProfessionalPaymentConfigController;
+use App\Modules\Schedule\Presentation\ScheduleEventController;
+use App\Modules\Schedule\Presentation\ScheduleEventTypeController;
 use App\Modules\Specialty\Presentation\SpecialtyController;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
@@ -33,6 +35,8 @@ $paymentTableController = new PaymentTableController();
 $paymentTableItemController = new PaymentTableItemController();
 $professionalPaymentConfigController = new ProfessionalPaymentConfigController();
 $specialtyController = new SpecialtyController();
+$scheduleEventTypeController = new ScheduleEventTypeController();
+$scheduleEventController = new ScheduleEventController();
 $authMiddleware = new AuthMiddleware();
 $permissionMiddleware = new PermissionMiddleware();
 
@@ -459,6 +463,126 @@ $routes->add('specialties.delete', new Route('/api/v1/specialties/{uuid}', [
         'professionals.update'
     ),
 ], [], [], '', [], ['DELETE']));
+
+$routes->add('schedule.event-types.index', new Route('/api/v1/schedule/event-types', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventTypeController->index($r),
+        'schedule.event_types.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('schedule.event-types.store', new Route('/api/v1/schedule/event-types', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventTypeController->store($r),
+        'schedule.event_types.create'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('schedule.event-types.show', new Route('/api/v1/schedule/event-types/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventTypeController->show($r),
+        'schedule.event_types.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('schedule.event-types.update', new Route('/api/v1/schedule/event-types/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventTypeController->update($r),
+        'schedule.event_types.update'
+    ),
+], [], [], '', [], ['PUT']));
+
+$routes->add('schedule.event-types.delete', new Route('/api/v1/schedule/event-types/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventTypeController->delete($r),
+        'schedule.event_types.delete'
+    ),
+], [], [], '', [], ['DELETE']));
+
+$routes->add('schedule.events.index', new Route('/api/v1/schedule/events', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->index($r),
+        'schedule.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('schedule.events.store', new Route('/api/v1/schedule/events', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->store($r),
+        'schedule.create'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('schedule.events.show', new Route('/api/v1/schedule/events/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->show($r),
+        'schedule.view'
+    ),
+], [], [], '', [], ['GET']));
+
+$routes->add('schedule.events.update', new Route('/api/v1/schedule/events/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->update($r),
+        'schedule.update'
+    ),
+], [], [], '', [], ['PUT']));
+
+$routes->add('schedule.events.delete', new Route('/api/v1/schedule/events/{uuid}', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->delete($r),
+        'schedule.delete'
+    ),
+], [], [], '', [], ['DELETE']));
+
+$routes->add('schedule.events.cancel', new Route('/api/v1/schedule/events/{uuid}/cancel', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->cancel($r),
+        'schedule.cancel'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('schedule.events.mark-absence', new Route('/api/v1/schedule/events/{uuid}/mark-absence', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->markAbsence($r),
+        'schedule.update'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('schedule.events.confirm', new Route('/api/v1/schedule/events/{uuid}/confirm', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->confirm($r),
+        'schedule.update'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('schedule.events.mark-done', new Route('/api/v1/schedule/events/{uuid}/mark-done', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->markDone($r),
+        'schedule.update'
+    ),
+], [], [], '', [], ['POST']));
+
+$routes->add('schedule.events.reschedule', new Route('/api/v1/schedule/events/{uuid}/reschedule', [
+    '_controller' => static fn (Request $request): array => $guarded(
+        $request,
+        static fn (Request $r): array => $scheduleEventController->reschedule($r),
+        'schedule.update'
+    ),
+], [], [], '', [], ['POST']));
 
 $routes->add('admin.users.protected', new Route('/api/v1/admin/users', [
     '_controller' => static fn (Request $request): array => $guarded(

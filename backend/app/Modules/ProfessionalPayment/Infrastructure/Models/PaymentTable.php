@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @property string $uuid
  * @property string $name
+ * @property float|null $default_fixed_amount
  * @property string $status
  * @property string $calculation_type
  * @property string|null $updated_at

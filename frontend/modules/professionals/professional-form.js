@@ -42,6 +42,14 @@ export default {
                 <label>Data de entrada</label>
                 <input class="input" name="entry_date" type="date" />
               </div>
+              <div class="field">
+                <label>Cor na agenda</label>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                  <input type="color" id="prof-color-picker" style="width:38px;height:38px;padding:2px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;" />
+                  <input class="input" name="schedule_color" id="prof-schedule-color" placeholder="#157470" maxlength="7" style="flex:1;" />
+                </div>
+                <div class="hint">Cor usada para identificar os compromissos deste profissional na agenda. Gerada automaticamente se não informada.</div>
+              </div>
             </div>
           </div>
 
@@ -139,6 +147,7 @@ export default {
       </div>`;
 
     initMasks();
+    this._bindColorPicker();
     await this._loadSpecialties();
     if (isEdit) await this._load(uuid);
 
@@ -155,6 +164,26 @@ export default {
     document.getElementById('payment-source-mode')?.addEventListener('change', () => this._togglePaymentSourceFields());
     document.getElementById('payment-mode')?.addEventListener('change', () => this._togglePaymentModeFields());
     document.getElementById('btn-open-payment-simulator')?.addEventListener('click', () => navigate(`/professional-payment?professional_uuid=${uuid}`));
+  },
+
+  _bindColorPicker() {
+    const picker = document.getElementById('prof-color-picker');
+    const textInput = document.getElementById('prof-schedule-color');
+    if (!picker || !textInput) return;
+
+    if (textInput.value && /^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+      picker.value = textInput.value;
+    }
+
+    picker.addEventListener('input', () => {
+      textInput.value = picker.value;
+    });
+
+    textInput.addEventListener('input', () => {
+      if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+        picker.value = textInput.value;
+      }
+    });
   },
 
   _specialties: [],
@@ -253,6 +282,11 @@ export default {
       this._selectedSpecialties.unshift(d.main_specialty);
     }
     this._renderSpecialties();
+
+    if (d.schedule_color && /^#[0-9A-Fa-f]{6}$/.test(d.schedule_color)) {
+      const picker = document.getElementById('prof-color-picker');
+      if (picker) picker.value = d.schedule_color;
+    }
 
     const linkedBox = document.getElementById('linked-user-box');
     if (linkedBox) {

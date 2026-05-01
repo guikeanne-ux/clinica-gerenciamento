@@ -331,6 +331,42 @@ it('gera cor automaticamente para profissional', function (): void {
     expect($json['data']['schedule_color'])->not->toBeNull();
 });
 
+it('aceita cor de agenda definida na criação do profissional', function (): void {
+    $res = ApiRequester::call('POST', '/api/v1/professionals', [
+        'full_name' => 'Profissional Cor Definida',
+        'cpf' => '12345678919',
+        'email' => 'profcordefinida@clinica.local',
+        'schedule_color' => '#FF5733',
+    ], ['Authorization' => 'Bearer ' . PersonApi::tokenFor()]);
+
+    $json = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR);
+
+    expect($res['status'])->toBe(201);
+    expect($json['data']['schedule_color'])->toBe('#FF5733');
+});
+
+it('atualiza cor de agenda do profissional', function (): void {
+    $token = PersonApi::tokenFor();
+
+    $createRes = ApiRequester::call('POST', '/api/v1/professionals', [
+        'full_name' => 'Profissional Cor Update',
+        'cpf' => '12345678920',
+        'email' => 'profcorupdate@clinica.local',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $createJson = json_decode($createRes['body'], true, flags: JSON_THROW_ON_ERROR);
+    $uuid = $createJson['data']['uuid'];
+
+    $res = ApiRequester::call('PUT', '/api/v1/professionals/' . $uuid, [
+        'schedule_color' => '#1A2B3C',
+    ], ['Authorization' => 'Bearer ' . $token]);
+
+    $json = json_decode($res['body'], true, flags: JSON_THROW_ON_ERROR);
+
+    expect($res['status'])->toBe(200);
+    expect($json['data']['schedule_color'])->toBe('#1A2B3C');
+});
+
 it('bloqueia cpf duplicado de profissional', function (): void {
     $token = PersonApi::tokenFor();
 

@@ -8,6 +8,5 @@ export const API_ENDPOINTS = {
   FILES:         '/api/v1/files',
   PATIENTS:      '/api/v1/patients',
   PROFESSIONALS: '/api/v1/professionals',
-  SUPPLIERS:     '/api/v1/suppliers',
   PAYMENT_TABLES:'/api/v1/payment-tables',
 };

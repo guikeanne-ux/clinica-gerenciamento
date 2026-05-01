@@ -27,9 +27,6 @@ A raiz redireciona para `/login` se não autenticado, ou `/dashboard` se autenti
 | `/professionals` | `modules/professionals/professionals-list.js` | `professionals.view` |
 | `/professionals/new` | `modules/professionals/professional-form.js` | `professionals.create` |
 | `/professionals/:uuid` | `modules/professionals/professional-form.js` | `professionals.view` |
-| `/suppliers` | `modules/suppliers/suppliers-list.js` | `suppliers.view` |
-| `/suppliers/new` | `modules/suppliers/supplier-form.js` | `suppliers.create` |
-| `/suppliers/:uuid` | `modules/suppliers/supplier-form.js` | `suppliers.view` |
 | `/payment-tables` | `modules/payment/payment-tables.js` | `professional_payment.view` |
 | `/payment-tables/new` | `modules/payment/payment-table-form.js` | `professional_payment.create` |
 | `/payment-tables/:uuid` | `modules/payment/payment-table-form.js` | `professional_payment.view` |
@@ -196,5 +193,9 @@ Os seguintes arquivos HTML foram mantidos como referência histórica e não sã
 - `modules/patients/index.html`
 - `modules/professional-payment/index.html`
 - `modules/professionals/index.html`
-- `modules/suppliers/index.html`
 - `design-system.html`
+
+## Módulo desativado no fluxo principal (Entrega 09.1)
+
+- Fornecedores (`/suppliers`) foi removido da navegação principal da SPA.
+- Endpoints legados podem permanecer apenas por compatibilidade técnica temporária.

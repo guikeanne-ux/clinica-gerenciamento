@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $password_hash
  * @property string $status
  * @property string|null $last_access_at
+ * @property string|null $professional_uuid
  */
 final class User extends Model
 {

@@ -13,6 +13,7 @@ function paymentConfigMessage(res, fallback) {
   if (field === 'payment_mode') return 'Selecione um modo de pagamento válido.';
   if (field === 'fixed_monthly_amount') return 'Informe um valor mensal válido.';
   if (field === 'fixed_per_attendance_amount') return 'Informe um valor por atendimento válido.';
+  if (field === 'manual_override_reason') return 'Informe a justificativa do valor manual.';
   if (field === 'hybrid_base_amount' || field === 'hybrid_threshold_quantity' || field === 'hybrid_extra_amount_per_attendance') {
     return 'Preencha corretamente os campos do modo híbrido.';
   }
@@ -29,6 +30,16 @@ function buildReferenceDateFromMonth(referenceMonth) {
   if (!y || !m) return null;
   const lastDay = new Date(y, m, 0).getDate();
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+}
+
+function simulationTypeLabel(type) {
+  const labels = {
+    single_attendance: '1 atendimento específico',
+    period_attendances: 'Vários atendimentos no período',
+    monthly_fixed: 'Mensal fixo',
+    hybrid: 'Híbrido',
+  };
+  return labels[type] || type || 'Simulação';
 }
 
 export default {
@@ -90,21 +101,44 @@ export default {
             </div>
           </div>
 
-          <!-- Valor -->
-          <div class="field" style="margin-bottom:0.75rem;">
-            <label>Valor bruto (R$)</label>
-            <input class="input" id="sim-gross" type="number" step="0.01" min="0" placeholder="Ex: 500.00" />
-          </div>
           <div class="form-grid" style="margin-bottom:0.75rem;">
+            <div class="field">
+              <label>Tipo de simulação</label>
+              <select class="input" id="sim-type">
+                <option value="single_attendance">1 atendimento específico</option>
+                <option value="period_attendances">Vários atendimentos no período</option>
+                <option value="monthly_fixed">Mensal fixo</option>
+                <option value="hybrid">Híbrido</option>
+              </select>
+            </div>
             <div class="field">
               <label>Mês de referência</label>
               <input class="input" id="sim-reference-month" type="month" />
               <div class="hint">Se não informar, será usado o mês atual.</div>
             </div>
+          </div>
+
+          <div class="form-grid" style="margin-bottom:0.75rem;">
             <div class="field">
               <label>Quantidade de atendimentos</label>
               <input class="input" id="sim-attendances" type="number" min="0" step="1" placeholder="Ex: 42" />
-              <div class="hint">Informe a quantidade prevista no período para cálculo do repasse.</div>
+              <div class="hint">Use para simulações por atendimento/período.</div>
+            </div>
+            <div class="field" style="display:flex;align-items:flex-end;">
+              <button type="button" class="btn btn-ghost btn-sm" id="sim-toggle-advanced">Mostrar opções avançadas</button>
+            </div>
+          </div>
+
+          <div id="sim-advanced" style="display:none;margin-bottom:0.75rem;border:1px dashed var(--border);border-radius:var(--r-sm);padding:0.75rem;">
+            <div class="form-grid">
+              <div class="field">
+                <label>Valor manual para simulação (override)</label>
+                <input class="input" id="sim-manual-base" type="number" min="0" step="0.01" placeholder="Opcional" />
+              </div>
+              <div class="field">
+                <label>Justificativa do override</label>
+                <input class="input" id="sim-manual-reason" maxlength="180" placeholder="Obrigatória quando usar valor manual" />
+              </div>
             </div>
           </div>
 
@@ -117,6 +151,8 @@ export default {
     this._selectedProfessional = null;
     this._selectedTable = null;
     initMasks();
+    const monthInput = document.getElementById('sim-reference-month');
+    if (monthInput) monthInput.value = new Date().toISOString().slice(0, 7);
 
     this._loadTables();
     this._mountEvents();
@@ -129,7 +165,10 @@ export default {
     document.getElementById('btn-search-prof')?.addEventListener('click', () => this._searchProfessionals());
     document.getElementById('prof-search-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this._searchProfessionals(); });
     document.getElementById('btn-clear-prof')?.addEventListener('click', () => this._clearProfessional());
+    document.getElementById('sim-type')?.addEventListener('change', () => this._syncSimulationTypeUi());
+    document.getElementById('sim-toggle-advanced')?.addEventListener('click', () => this._toggleAdvancedOptions());
     document.getElementById('btn-simulate')?.addEventListener('click', () => this._simulate());
+    this._syncSimulationTypeUi();
   },
 
   async _loadTables() {
@@ -245,23 +284,56 @@ export default {
     toast.info('Profissional pré-selecionado para simular repasse.');
   },
 
+  _syncSimulationTypeUi() {
+    const type = document.getElementById('sim-type')?.value || 'single_attendance';
+    const attendances = document.getElementById('sim-attendances');
+    if (!attendances) return;
+
+    const needsQuantity = type === 'period_attendances' || type === 'hybrid';
+    attendances.disabled = !needsQuantity;
+    if (!needsQuantity) {
+      attendances.value = '';
+    }
+  },
+
+  _toggleAdvancedOptions() {
+    const panel = document.getElementById('sim-advanced');
+    const button = document.getElementById('sim-toggle-advanced');
+    if (!panel || !button) return;
+
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? '' : 'none';
+    button.textContent = isHidden ? 'Ocultar opções avançadas' : 'Mostrar opções avançadas';
+  },
+
   async _simulate() {
     const result = document.getElementById('simulate-result');
     if (!this._selectedProfessional) {
       toast.warning('Selecione um profissional para simular.');
       return;
     }
-    const grossVal = document.getElementById('sim-gross')?.value;
-    if (!grossVal) {
-      toast.warning('Informe o valor bruto para simulação.');
-      return;
-    }
 
+    const typeInput = document.getElementById('sim-type');
     const monthInput = document.getElementById('sim-reference-month');
     const attendancesInput = document.getElementById('sim-attendances');
+    const manualBaseInput = document.getElementById('sim-manual-base');
+    const manualReasonInput = document.getElementById('sim-manual-reason');
+    const simulationType = typeInput?.value || 'single_attendance';
     const requestedReferenceMonth = monthInput?.value || new Date().toISOString().slice(0, 7);
     let referenceDateToSimulate = buildReferenceDateFromMonth(requestedReferenceMonth);
     const attendancesCount = Number(attendancesInput?.value || 0);
+    const manualBaseAmount = manualBaseInput?.value ? Number(manualBaseInput.value) : null;
+    const manualOverrideReason = String(manualReasonInput?.value || '').trim();
+
+    if ((simulationType === 'period_attendances' || simulationType === 'hybrid') && attendancesCount < 0) {
+      toast.warning('Informe uma quantidade de atendimentos válida.');
+      return;
+    }
+
+    if (manualBaseAmount !== null && !manualOverrideReason) {
+      toast.warning('Informe a justificativa para usar valor manual na simulação.');
+      return;
+    }
     let referenceMonthToSimulate = requestedReferenceMonth;
     let resolved = await http.get(
       `/api/v1/professionals/${this._selectedProfessional.uuid}/payment-rule?date=${encodeURIComponent(referenceDateToSimulate || (requestedReferenceMonth + '-01'))}`,
@@ -324,24 +396,39 @@ export default {
     }
 
     const payload = {
+      simulation_type: simulationType,
       reference_month: referenceMonthToSimulate,
       reference_date: referenceDateToSimulate || undefined,
       attendances_count: attendancesCount,
+      payment_table_uuid: this._selectedTable?.uuid || undefined,
+      manual_base_amount: manualBaseAmount ?? undefined,
+      manual_override_reason: manualBaseAmount !== null ? manualOverrideReason : undefined,
     };
 
     const res = await http.post(`/api/v1/professionals/${this._selectedProfessional.uuid}/simulate-payout`, payload);
     if (res.success) {
       toast.success('Simulação realizada com sucesso.');
       const d = res.data;
+      const memory = Array.isArray(d.calculation_memory) ? d.calculation_memory : [];
+      const tableName = d?.rule_resolution?.payment_table?.name || 'Tabela não aplicada';
+      const mode = this._typeLabel(d.payment_mode);
+      const manualOverrideLabel = d?.manual_override?.enabled ? formatCurrencyBRL(d?.manual_override?.manual_base_amount || 0) : 'Não';
+
       result.innerHTML = `
         <div class="card card--active">
           <div class="font-semibold" style="margin-bottom:0.5rem;">Resultado da simulação</div>
-          <div class="text-xs text-muted" style="margin-bottom:0.5rem;">Profissional: ${this._selectedProfessional.name}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-            <div><div class="text-xs text-muted">Base informada</div><div class="font-semibold">${formatCurrencyBRL(d.gross_amount || 0)}</div></div>
-            <div><div class="text-xs text-muted">Repasse estimado</div><div class="font-semibold">${formatCurrencyBRL(d.net_amount || d.payout || d.total_amount || 0)}</div></div>
+          <div class="text-xs text-muted" style="margin-bottom:0.5rem;">Profissional: ${this._selectedProfessional.name} · Tipo: ${simulationTypeLabel(d.simulation_type)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <div><div class="text-xs text-muted">Modo vigente</div><div class="font-semibold">${mode}</div></div>
+            <div><div class="text-xs text-muted">Tabela usada</div><div class="font-semibold">${tableName}</div></div>
+            <div><div class="text-xs text-muted">Valor manual</div><div class="font-semibold">${manualOverrideLabel}</div></div>
+            <div><div class="text-xs text-muted">Repasse estimado</div><div class="font-semibold">${formatCurrencyBRL(d.total_amount || 0)}</div></div>
           </div>
-          <div class="text-xs text-muted" style="margin-top:0.6rem;">Este valor é apenas uma simulação para conferência.</div>
+          <div class="text-xs text-muted" style="margin-top:0.4rem;margin-bottom:0.4rem;">Memória de cálculo:</div>
+          <ul style="margin:0;padding-left:1rem;display:grid;gap:0.22rem;">
+            ${(memory.length ? memory : ['Não há memória detalhada para este cenário.']).map((line) => `<li class="text-sm">${line}</li>`).join('')}
+          </ul>
+          <div class="text-xs text-muted" style="margin-top:0.6rem;">Esta simulação não gera financeiro real e não altera contrato/tabela.</div>
         </div>`;
     } else {
       if (res?.meta?.error_code === 'NOT_FOUND') {

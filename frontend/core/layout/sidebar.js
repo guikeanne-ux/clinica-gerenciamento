@@ -12,6 +12,7 @@ const NAV_GROUPS = [
   {
     label: 'Clínica',
     items: [
+      { path: '/schedule', label: 'Agenda', icon: 'calendar-days', permission: 'schedule.view' },
       { path: '/patients',       label: 'Pacientes',      icon: 'users',          permission: 'patients.view' },
       { path: '/professionals',  label: 'Profissionais',  icon: 'stethoscope',    permission: 'professionals.view' },
       { path: '/specialties',    label: 'Especialidades', icon: 'tag',            permission: 'professionals.view' },
@@ -20,7 +21,6 @@ const NAV_GROUPS = [
   {
     label: 'Operacional',
     items: [
-      { path: '/suppliers',            label: 'Fornecedores',         icon: 'building-2',   permission: 'suppliers.view' },
       { path: '/payment-tables',       label: 'Tabelas de pagamento', icon: 'receipt-text', permission: 'professional_payment.view' },
       { path: '/professional-payment', label: 'Repasse profissional', icon: 'banknote',     permission: 'professional_payment.view' },
     ],
@@ -28,7 +28,8 @@ const NAV_GROUPS = [
   {
     label: 'Configurações',
     items: [
-      { path: '/company', label: 'Empresa', icon: 'settings', permission: 'company.view' },
+      { path: '/company',                    label: 'Empresa',                icon: 'settings', permission: 'company.view' },
+      { path: '/schedule/appointment-types', label: 'Tipos de compromisso',  icon: 'tags',     permission: 'schedule.event_types.view' },
     ],
   },
 ];

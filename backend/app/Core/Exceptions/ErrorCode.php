@@ -13,6 +13,7 @@ final class ErrorCode
     public const FORBIDDEN = 'FORBIDDEN';
     public const NOT_FOUND = 'NOT_FOUND';
     public const CONFLICT = 'CONFLICT';
+    public const SCHEDULE_CONFLICT = 'SCHEDULE_CONFLICT';
     public const DUPLICATE_LOGIN = 'DUPLICATE_LOGIN';
     public const DUPLICATE_DOCUMENT = 'DUPLICATE_DOCUMENT';
     public const DUPLICATE_EMAIL = 'DUPLICATE_EMAIL';
